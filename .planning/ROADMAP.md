@@ -57,7 +57,7 @@ Plans:
 - [x] 03-01-PLAN.md — Retrieval foundation: dictionary-first RU/EN alias resolver, deterministic Chroma retrieval, and typed evidence contracts.
 - [x] 03-02-PLAN.md — Inline `/next_message` grounding flow with evidence-to-answer linkage and RAG traceability tests.
 - [x] 03-03-PLAN.md — Gap closure: deterministic `f1db-csv` ingestion/indexing into Chroma with document schema and idempotent upsert tests.
-- [ ] 03-04-PLAN.md — Gap closure: replace simulated retriever path with real indexed-chunk query and non-mocked endpoint grounding verification.
+- [x] 03-04-PLAN.md — Gap closure: replace simulated retriever path with real indexed-chunk query and non-mocked endpoint grounding verification.
 
 ### Phase 4: RU Q&A Answer Reliability
 **Goal**: Users get structured Russian answers with explicit confidence and safe abstention when evidence is insufficient.
