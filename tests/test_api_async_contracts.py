@@ -1,7 +1,29 @@
+import chromadb
 from uuid import UUID
 
 from conftest import assert_error_envelope
 from src.api.chat import PROCESS_CALLS
+from src.retrieval.retriever import COLLECTION_NAME
+
+
+def _seed_historical_collection(*, canonical_entity_id: str, source_id: str, snippet: str):
+    client = chromadb.PersistentClient(path=".chroma")
+    try:
+        client.delete_collection(name=COLLECTION_NAME)
+    except Exception:
+        pass
+    collection = client.get_or_create_collection(name=COLLECTION_NAME)
+    collection.upsert(
+        ids=[f"seed:{source_id}"],
+        documents=[snippet],
+        metadatas=[
+            {
+                "dataset": "f1db",
+                "canonical_entity_id": canonical_entity_id,
+                "source_id": source_id,
+            }
+        ],
+    )
 
 
 def test_start_chat_returns_uuid_session_id(client):
@@ -96,3 +118,33 @@ def test_next_message_uses_inline_retrieval_pipeline(client, monkeypatch):
     assert payload["details"]["code"] == "OK"
     assert payload["details"]["evidence"]
     assert payload["details"]["evidence"][0]["used_in_answer"] is True
+
+
+def test_response_contains_traceable_evidence_without_monkeypatch(client, monkeypatch):
+    start = client.post("/start_chat", json={"access_code": "ABC123"})
+    sid = start.json()["session_id"]
+    session = client.app.state.session_store.get(sid)
+    assert session is not None
+    session.next_message = "Макс Ферстаппен в Монако"
+
+    _seed_historical_collection(
+        canonical_entity_id="driver:max_verstappen",
+        source_id="f1db:race:2023-monaco",
+        snippet="Verstappen won Monaco GP in 2023 for Red Bull.",
+    )
+
+    monkeypatch.setattr(
+        "src.api.chat.resolve_entities",
+        lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]),
+    )
+
+    response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    evidence = payload["details"]["evidence"][0]
+    assert evidence["source_id"]
+    assert evidence["snippet"]
+    assert evidence["entity_tags"] == ["driver:max_verstappen"]
+    assert evidence["rank_score"] >= 0
+    assert evidence["used_in_answer"] is True
