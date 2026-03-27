@@ -14,7 +14,12 @@ def retrieve_historical_context(
     # Phase 3 stays historical-only: dataset="f1db" snapshot scope only.
     source_filter: dict[str, object] = {"dataset": "f1db"}
     if canonical_entity_ids:
-        source_filter["canonical_entity_id"] = {"$in": canonical_entity_ids}
+        source_filter = {
+            "$and": [
+                {"dataset": DATASET_SCOPE},
+                {"canonical_entity_id": {"$in": canonical_entity_ids}},
+            ]
+        }
 
     return _query_historical_index(
         query=query,
