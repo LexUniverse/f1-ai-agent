@@ -17,7 +17,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **RAG-01**: User can receive answers grounded in f1db historical data indexed in ChromaDB.
 - [x] **RAG-02**: User queries are matched against RU/EN entity aliases (drivers, teams, races).
-- [ ] **RAG-03**: User receives traceable retrieved context references used for final answer synthesis.
+- [x] **RAG-03**: User receives traceable retrieved context references used for final answer synthesis.
 
 ### Live API + Reliability
 
@@ -69,7 +69,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QNA-03 | Phase 4 | Pending |
 | RAG-01 | Phase 3 | Complete |
 | RAG-02 | Phase 3 | Complete |
-| RAG-03 | Phase 3 | Pending |
+| RAG-03 | Phase 3 | Complete |
 | LIVE-01 | Phase 5 | Pending |
 | LIVE-02 | Phase 5 | Pending |
 | LIVE-03 | Phase 5 | Pending |
