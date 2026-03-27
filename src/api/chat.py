@@ -4,6 +4,9 @@ from src.auth.dependencies import require_authorized_session
 from src.auth.errors import AUTH_UNAUTHORIZED, unauthorized_error
 from src.auth.service import AuthService
 from src.models.api_contracts import MessageStatusResponse, NextMessageResponse, StartChatRequest, StartChatResponse
+from src.retrieval.alias_resolver import resolve_entities
+from src.retrieval.evidence import format_evidence
+from src.retrieval.retriever import retrieve_historical_context
 from src.sessions.store import SessionStore
 
 router = APIRouter()
@@ -44,8 +47,44 @@ def message_status(_session=Depends(_session_dependency)):
 
 
 @router.post("/next_message", response_model=NextMessageResponse)
-def next_message(_session=Depends(_session_dependency)):
+def next_message(request: Request, _session=Depends(_session_dependency)):
+    store: SessionStore = request.app.state.session_store
     process_chat_message()
     if _session.status == "failed":
-        return NextMessageResponse(message="", status="failed", details={"code": _session.failure_code or "MESSAGE_FAILED"})
-    return NextMessageResponse(message=_session.next_message, status="ready")
+        return NextMessageResponse(
+            message="",
+            status="failed",
+            details={"code": _session.failure_code or "MESSAGE_FAILED", "evidence": []},
+        )
+
+    try:
+        normalized_query, canonical_entity_ids, entity_tags = resolve_entities(_session.next_message)
+        hits = retrieve_historical_context(
+            normalized_query,
+            canonical_entity_ids,
+            top_k=5,
+            min_score=0.35,
+        )
+        evidence = format_evidence(hits, entity_tags)
+        for item in evidence:
+            item.used_in_answer = True
+
+        if evidence:
+            message = f"Историческая сводка: {evidence[0].snippet}"
+            status = "ready"
+            details = {
+                "code": "OK",
+                "normalized_query": normalized_query,
+                "canonical_entity_ids": canonical_entity_ids,
+                "evidence": [item.model_dump() for item in evidence],
+            }
+        else:
+            message = "Недостаточно исторических данных в базе f1db."
+            status = "failed"
+            details = {"code": "RETRIEVAL_NO_EVIDENCE", "evidence": []}
+
+        store.set_status(_session.session_id, status, details["code"] if status == "failed" else None)
+        return NextMessageResponse(message=message, status=status, details=details)
+    except Exception:
+        store.set_status(_session.session_id, "failed", "RETRIEVAL_FAILED")
+        return NextMessageResponse(message="", status="failed", details={"code": "RETRIEVAL_FAILED", "evidence": []})
