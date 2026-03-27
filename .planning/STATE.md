@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: planning
+milestone: v1.1
+milestone_name: product-surface-gigachat
+status: Ready to plan
 stopped_at: Phase 6 context gathered
 last_updated: "2026-03-27T19:38:39.566Z"
-last_activity: 2026-03-27 — v1.1 requirements & roadmap updated
+last_activity: 2026-03-27 — Phase 6 discuss-phase complete; context captured
 progress:
   total_phases: 7
   completed_phases: 5
@@ -59,4 +59,4 @@ None yet.
 
 Last session: 2026-03-27T19:38:39.557Z
 Stopped at: Phase 6 context gathered
-Next step: `/gsd-plan-phase 6` (or `/gsd-discuss-phase 6`)
+Next step: `/gsd-plan-phase 6`
