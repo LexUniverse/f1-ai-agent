@@ -53,6 +53,10 @@ def start_chat(payload: StartChatRequest, request: Request):
         raise unauthorized_error(decision.code or AUTH_UNAUTHORIZED, decision.message or "Не авторизован.", decision.retry_after_seconds)
 
     session = session_store.create(authorized=True)
+    if payload.question is not None:
+        stripped = payload.question.strip()
+        if stripped:
+            session.next_message = stripped
     return StartChatResponse(session_id=session.session_id)
 
 

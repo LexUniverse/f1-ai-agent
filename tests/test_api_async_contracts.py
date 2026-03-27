@@ -49,6 +49,18 @@ def _seed_historical_collection(*, canonical_entity_id: str, source_id: str, sni
     )
 
 
+def test_start_chat_optional_question_sets_session_next_message(client):
+    response = client.post(
+        "/start_chat",
+        json={"access_code": "ABC123", "question": "  Макс Ферстаппен  "},
+    )
+    assert response.status_code == 200
+    session_id = response.json()["session_id"]
+    session = client.app.state.session_store.get(session_id)
+    assert session is not None
+    assert session.next_message == "Макс Ферстаппен"
+
+
 def test_start_chat_returns_uuid_session_id(client):
     response = client.post("/start_chat", json={"access_code": "ABC123"})
     assert response.status_code == 200

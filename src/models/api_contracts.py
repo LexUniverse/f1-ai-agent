@@ -16,6 +16,7 @@ class ErrorEnvelope(BaseModel):
 
 class StartChatRequest(BaseModel):
     access_code: str | None = None
+    question: str | None = None
 
 
 class StartChatResponse(BaseModel):
