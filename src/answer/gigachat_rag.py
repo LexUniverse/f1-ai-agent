@@ -9,7 +9,7 @@ from gigachat.models import Chat, Messages, MessagesRole
 from pydantic import BaseModel, ValidationError
 
 from src.answer.russian_qna import (
-    build_live_structured_ru_answer,
+    build_structured_ru_answer,
     build_sources_block_ru_from_evidence,
     live_qna_confidence,
     qna_confidence_from_evidence,
@@ -18,13 +18,23 @@ from src.models.api_contracts import AnswerSection, EvidenceItem, QnAConfidence,
 
 GIGACHAT_SUCCESS_ROUTE = "gigachat_rag"
 GIGACHAT_FALLBACK_ROUTE = "template_fallback"
+GIGACHAT_WEB_ROUTE = "gigachat_web"
 GIGACHAT_TEMPLATE_FALLBACK_DISCLOSURE_RU = "Ответ подготовлен по шаблону: нейросеть GigaChat сейчас недоступна."
 
 _SYSTEM_HISTORICAL = """Ты помощник по Формуле 1. Отвечай на русском, опираясь только на фрагменты контекста [1]..[n].
 Верни один JSON-объект без markdown и без текста вокруг. Ключи: message (короткая строка для пользователя), sections (массив объектов с heading и body)."""
 
-_SYSTEM_LIVE = """Ты помощник по Формуле 1. В контексте даны актуальные данные (не из исторической базы). Ответь на русском.
+_SYSTEM_WEB = """Ты помощник по Формуле 1. Ниже даны выдержки из веб-поиска с URL. Отвечай на русском строго по этим выдержкам; не выдумывай факты вне них.
 Верни один JSON-объект без markdown и без текста вокруг. Ключи: message (короткая строка для пользователя), sections (массив объектов с heading и body)."""
+
+_SYSTEM_TAVILY_QUERY = (
+    "Сформулируй одну короткую поисковую строку (на английском или русском) для веб-поиска по Формуле 1. "
+    "Ответ — только эта строка, без кавычек, без пояснений, без JSON."
+)
+
+_SYSTEM_JUDGE = """Тебе дан вопрос пользователя и фрагменты контекста из исторической базы.
+Оцени, достаточно ли контекста, чтобы дать содержательный ответ на вопрос (не обязательно идеальный, но лучше, чем «данных нет»).
+Верни один JSON-объект без markdown: {"sufficient": true} или {"sufficient": false}."""
 
 
 @dataclass
@@ -41,7 +51,6 @@ def append_fallback_disclosure_ru(message: str) -> str:
 
 
 def _client_kwargs() -> dict:
-    # Credentials и прочее подхватываются из GIGACHAT_* через gigachat.Settings, если не передать явно.
     return {
         "timeout": float(os.environ.get("GIGACHAT_TIMEOUT", "30")),
         "max_retries": int(os.environ.get("GIGACHAT_MAX_RETRIES", "2")),
@@ -56,6 +65,10 @@ def _model_name() -> str:
 class _LLMJsonPayload(BaseModel):
     message: str
     sections: list[AnswerSection]
+
+
+class _SufficiencyJudgePayload(BaseModel):
+    sufficient: bool
 
 
 def _strip_json_fence(text: str) -> str:
@@ -109,6 +122,77 @@ def _chat_completion_json(
                 raise e2 from last_exc
 
 
+def _chat_completion_plain_line(*, system: str, user: str) -> str:
+    model = _model_name()
+    with GigaChat(**_client_kwargs()) as client:
+        messages: list[Messages] = [
+            Messages(role=MessagesRole.SYSTEM, content=system),
+            Messages(role=MessagesRole.USER, content=user),
+        ]
+        resp = client.chat(Chat(model=model, messages=messages))
+        line = (resp.choices[0].message.content or "").strip().split("\n")[0].strip()
+        return line[:500]
+
+
+def gigachat_author_tavily_query(*, user_question: str) -> str:
+    try:
+        q = _chat_completion_plain_line(system=_SYSTEM_TAVILY_QUERY, user=f"Вопрос: {user_question}")
+        return q if q else user_question[:200]
+    except Exception:
+        return user_question[:200].strip()
+
+
+def _web_sources_block_ru(web_results: list[dict]) -> tuple[str, int]:
+    lines: list[str] = ["Источники:"]
+    for n, row in enumerate(web_results, start=1):
+        url = str(row.get("url", ""))
+        content = str(row.get("content", ""))
+        excerpt = content[:80] + ("…" if len(content) > 80 else "")
+        lines.append(f"[{n}] {url} — {excerpt}")
+    return "\n".join(lines), len(web_results)
+
+
+def gigachat_synthesize_from_web_results(
+    *, user_question: str, web_results: list[dict]
+) -> GigachatRUSynthesisResult:
+    lines = []
+    for i, row in enumerate(web_results, start=1):
+        url = row.get("url", "")
+        title = row.get("title", "")
+        body = str(row.get("content", ""))[:1200]
+        head = f"{title} — {url}" if title else str(url)
+        lines.append(f"[{i}] URL: {head}\nВыдержка: {body}")
+    user = f"Вопрос пользователя: {user_question}\n\nРезультаты поиска:\n" + "\n\n".join(lines)
+    msg, sections = _chat_completion_json(system=_SYSTEM_WEB, user=user)
+    sources_block_ru, citation_count = _web_sources_block_ru(web_results)
+    conf = live_qna_confidence()
+    structured = StructuredRUAnswer(
+        sections=sections,
+        sources_block_ru=sources_block_ru,
+        citation_count=citation_count,
+    )
+    return GigachatRUSynthesisResult(message=msg, structured_answer=structured, confidence=conf)
+
+
+def gigachat_judge_rag_sufficient(*, user_question: str, evidence: list[EvidenceItem]) -> bool:
+    lines = [f"[{i}] {item.source_id}: {item.snippet}" for i, item in enumerate(evidence, start=1)]
+    user = f"Вопрос: {user_question}\n\nКонтекст:\n" + "\n".join(lines)
+    try:
+        model = _model_name()
+        with GigaChat(**_client_kwargs()) as client:
+            messages: list[Messages] = [
+                Messages(role=MessagesRole.SYSTEM, content=_SYSTEM_JUDGE),
+                Messages(role=MessagesRole.USER, content=user),
+            ]
+            resp = client.chat(Chat(model=model, messages=messages))
+            content = resp.choices[0].message.content
+            data = json.loads(_strip_json_fence(content))
+            parsed = _SufficiencyJudgePayload.model_validate(data)
+            return bool(parsed.sufficient)
+    except Exception:
+        return False
+
+
 def gigachat_synthesize_historical(*, evidence: list[EvidenceItem], user_question: str) -> GigachatRUSynthesisResult:
     lines = [f"[{i}] {item.source_id}: {item.snippet}" for i, item in enumerate(evidence, start=1)]
     user = f"Вопрос пользователя: {user_question}\n\nКонтекст:\n" + "\n".join(lines)
@@ -119,21 +203,5 @@ def gigachat_synthesize_historical(*, evidence: list[EvidenceItem], user_questio
         sections=sections,
         sources_block_ru=sources_block_ru,
         citation_count=citation_count,
-    )
-    return GigachatRUSynthesisResult(message=msg, structured_answer=structured, confidence=conf)
-
-
-def gigachat_synthesize_live(*, summary_ru: str, user_question: str, as_of_utc_z: str) -> GigachatRUSynthesisResult:
-    user = (
-        f"Вопрос пользователя: {user_question}\n\n"
-        f"Актуальные данные (не из исторической базы):\n{summary_ru}\n(на момент {as_of_utc_z})"
-    )
-    msg, sections = _chat_completion_json(system=_SYSTEM_LIVE, user=user)
-    base = build_live_structured_ru_answer(summary_ru=summary_ru)
-    conf = live_qna_confidence()
-    structured = StructuredRUAnswer(
-        sections=sections,
-        sources_block_ru=base.sources_block_ru,
-        citation_count=base.citation_count,
     )
     return GigachatRUSynthesisResult(message=msg, structured_answer=structured, confidence=conf)

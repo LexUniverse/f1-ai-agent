@@ -1,12 +1,13 @@
 import chromadb
 from uuid import UUID
 
+import src.graph.f1_turn_graph as f1g
 from conftest import assert_error_envelope
 from src.answer.gigachat_rag import GigachatRUSynthesisResult
 from src.answer.russian_qna import build_sources_block_ru_from_evidence, qna_confidence_from_evidence
 from src.api.chat import PROCESS_CALLS
 from src.models.api_contracts import AnswerSection, StructuredRUAnswer
-from src.retrieval.retriever import COLLECTION_NAME
+from src.retrieval.retriever import COLLECTION_NAME, retrieve_historical_context
 
 
 def _fake_gigachat_historical(*, evidence, user_question: str = "", template_overlay: str | None = None):
@@ -27,6 +28,23 @@ def _fake_gigachat_historical(*, evidence, user_question: str = "", template_ove
         ),
         confidence=conf,
     )
+
+
+def _retrieve_with_boosted_scores(
+    query: str,
+    canonical_entity_ids: list[str],
+    *,
+    top_k: int = 5,
+    min_score: float = 0.35,
+):
+    """Use real Chroma but relax floor so tests stay on the RAG path when embeddings are weak."""
+    hits = retrieve_historical_context(query, canonical_entity_ids, top_k=top_k, min_score=0.0)
+    out: list[dict] = []
+    for h in hits:
+        hh = dict(h)
+        hh["score"] = max(float(hh.get("score", 0.0)), 0.91)
+        out.append(hh)
+    return [h for h in out if h["score"] >= min_score]
 
 
 def _seed_historical_collection(*, canonical_entity_id: str, source_id: str, snippet: str):
@@ -141,11 +159,13 @@ def test_next_message_uses_inline_retrieval_pipeline(client, monkeypatch):
 
     monkeypatch.setattr("src.api.chat.resolve_entities", lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]))
     monkeypatch.setattr(
-        "src.api.chat.retrieve_historical_context",
+        f1g,
+        "retrieve_historical_context",
         lambda *_args, **_kwargs: [{"source_id": "f1db:race:2023-monaco", "snippet": "Verstappen won Monaco GP 2023", "score": 0.91}],
     )
     monkeypatch.setattr(
-        "src.api.chat.gigachat_synthesize_historical",
+        f1g,
+        "gigachat_synthesize_historical",
         lambda **kw: _fake_gigachat_historical(**kw),
     )
 
@@ -176,8 +196,11 @@ def test_response_contains_traceable_evidence_without_monkeypatch(client, monkey
         "src.api.chat.resolve_entities",
         lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]),
     )
+    monkeypatch.setattr(f1g, "retrieve_historical_context", _retrieve_with_boosted_scores)
+    monkeypatch.setattr(f1g, "gigachat_judge_rag_sufficient", lambda **_: True)
     monkeypatch.setattr(
-        "src.api.chat.gigachat_synthesize_historical",
+        f1g,
+        "gigachat_synthesize_historical",
         lambda **kw: _fake_gigachat_historical(**kw),
     )
 

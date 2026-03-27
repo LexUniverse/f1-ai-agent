@@ -83,6 +83,20 @@ def main() -> None:
         st.caption("API")
         st.code(base, language="text")
 
+    if not st.session_state.messages:
+        st.info("Введите код и вопрос, затем нажмите «Отправить вопрос».")
+
+    with st.container(height=520, border=True):
+        for msg in st.session_state.messages:
+            role = msg["role"]
+            with st.chat_message(role):
+                if role == "assistant" and msg.get("details"):
+                    _render_assistant_block(msg["content"], msg["details"])
+                else:
+                    st.markdown(msg["content"])
+
+    st.divider()
+
     ac = st.text_input("Код доступа", placeholder="Введите персональный код", key="access_code")
     q = st.text_input(
         "Вопрос",
@@ -101,16 +115,6 @@ def main() -> None:
         st.session_state.session_id = None
         st.rerun()
 
-    if not st.session_state.messages:
-        st.info("Введите код и вопрос, затем нажмите «Отправить вопрос».")
-
-    for msg in st.session_state.messages:
-        role = msg["role"]
-        with st.chat_message(role):
-            st.markdown(msg["content"])
-            if role == "assistant" and msg.get("details"):
-                _render_assistant_block(msg["content"], msg["details"])
-
     if send:
         if not (ac or "").strip() or not (q or "").strip():
             st.warning("Нужны непустой код доступа и вопрос.")
@@ -124,7 +128,6 @@ def main() -> None:
                         return
 
                     st.session_state.session_id = sid
-                    st.session_state.messages.append({"role": "user", "content": q.strip()})
 
                     deadline = time.monotonic() + STATUS_TIMEOUT_SECONDS
                     with st.spinner("Ожидаем ответ…"):
@@ -152,9 +155,11 @@ def main() -> None:
 
                     assistant_text = nxt.get("message", "") or ""
                     details = nxt.get("details") if isinstance(nxt.get("details"), dict) else {}
-                    st.session_state.messages.append(
-                        {"role": "assistant", "content": assistant_text, "details": details}
+                    st.session_state.messages.insert(
+                        0,
+                        {"role": "assistant", "content": assistant_text, "details": details},
                     )
+                    st.session_state.messages.insert(0, {"role": "user", "content": q.strip()})
             except httpx.RequestError as exc:
                 st.error(f"Ошибка сети: {exc}")
 

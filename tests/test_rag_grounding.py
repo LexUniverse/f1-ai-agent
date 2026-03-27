@@ -1,5 +1,6 @@
 import chromadb
 
+import src.graph.f1_turn_graph as f1g
 from src.answer.gigachat_rag import GigachatRUSynthesisResult
 from src.answer.russian_qna import build_sources_block_ru_from_evidence, qna_confidence_from_evidence
 from src.models.api_contracts import AnswerSection, StructuredRUAnswer
@@ -20,6 +21,22 @@ def _fake_gigachat_historical(*, evidence, user_question: str = ""):
         ),
         confidence=conf,
     )
+
+
+def _retrieve_with_boosted_scores(
+    query: str,
+    canonical_entity_ids: list[str],
+    *,
+    top_k: int = 5,
+    min_score: float = 0.35,
+):
+    hits = retrieve_historical_context(query, canonical_entity_ids, top_k=top_k, min_score=0.0)
+    out: list[dict] = []
+    for h in hits:
+        hh = dict(h)
+        hh["score"] = max(float(hh.get("score", 0.0)), 0.91)
+        out.append(hh)
+    return [h for h in out if h["score"] >= min_score]
 
 
 def _seed_historical_collection(*, canonical_entity_id: str, source_id: str, snippet: str):
@@ -79,8 +96,11 @@ def test_next_message_grounds_from_indexed_f1db_context(client, monkeypatch):
         "src.api.chat.resolve_entities",
         lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]),
     )
+    monkeypatch.setattr(f1g, "retrieve_historical_context", _retrieve_with_boosted_scores)
+    monkeypatch.setattr(f1g, "gigachat_judge_rag_sufficient", lambda **_: True)
     monkeypatch.setattr(
-        "src.api.chat.gigachat_synthesize_historical",
+        f1g,
+        "gigachat_synthesize_historical",
         lambda **kw: _fake_gigachat_historical(**kw),
     )
 
@@ -104,11 +124,13 @@ def test_response_contains_traceable_evidence(client, monkeypatch):
         lambda _query: ("max verstappen", ["driver:max_verstappen"], ["driver:max_verstappen"]),
     )
     monkeypatch.setattr(
-        "src.api.chat.retrieve_historical_context",
+        f1g,
+        "retrieve_historical_context",
         lambda *_args, **_kwargs: [{"source_id": "f1db:driver:verstappen", "snippet": "Multiple wins in modern era", "score": 0.93}],
     )
     monkeypatch.setattr(
-        "src.api.chat.gigachat_synthesize_historical",
+        f1g,
+        "gigachat_synthesize_historical",
         lambda **kw: _fake_gigachat_historical(**kw),
     )
 

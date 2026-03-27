@@ -12,7 +12,6 @@ if str(ROOT) not in sys.path:
 from src.api.chat import PROCESS_CALLS
 from src.auth.limiter import AuthLimiter
 from src.auth.service import AuthService
-from src.integrations.f1api_client import F1ApiClient
 from src.main import app
 from src.sessions.store import SessionStore
 
@@ -22,7 +21,6 @@ def reset_state():
     os.environ["AUTH_ALLOWLIST_CODES"] = "ABC123,XYZ789"
     app.state.session_store = SessionStore()
     app.state.auth_service = AuthService(limiter=AuthLimiter(max_failures=5, window_seconds=300, cooldown_seconds=600))
-    app.state.f1_api_client = F1ApiClient.from_env()
     PROCESS_CALLS["count"] = 0
     yield
 

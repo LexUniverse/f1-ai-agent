@@ -1,17 +1,20 @@
+from pathlib import Path
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from src.api.chat import router as chat_router
 from src.auth.service import AuthService
-from src.integrations.f1api_client import F1ApiClient
 from src.models.api_contracts import ErrorEnvelope, ErrorEnvelopeBody
 from src.sessions.store import SessionStore
 
 app = FastAPI(title="F1 Assistant API")
 app.state.session_store = SessionStore()
 app.state.auth_service = AuthService()
-app.state.f1_api_client = F1ApiClient.from_env()
 app.include_router(chat_router)
 
 
