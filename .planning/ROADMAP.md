@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees. *(Completed: 2026-03-27)*
 - [x] **Phase 6: GigaChat Classic RAG** - Chunk-grounded Russian answers via GigaChat; `gigachat_rag.py` replaces `russian_qna.py`; template fallback on LLM outage. *(Completed: 2026-03-27)*
 - [x] **Phase 7: Streamlit UI & Local Run** - Chat UI (`/start_chat`, status polling, `/next_message`); show message, confidence, citations, `details.live`; document `python api.py` + Streamlit (no Docker). *(Completed: 2026-03-27)*
-- [ ] **Phase 8: LangGraph Supervisor & Tavily Tooling** - GigaChat-centric **LangGraph**: RAG node, sufficiency gate, **LangChain Tavily** tool node; remove **f1api** from `/next_message` pipeline; caps/timeouts for search.
+- [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - GigaChat-centric **LangGraph**: RAG node, sufficiency gate, **LangChain Tavily** tool node; remove **f1api** from `/next_message` pipeline; caps/timeouts for search. *(Completed: 2026-03-28)*
 - [ ] **Phase 9: Web Provenance — API & Streamlit** - **WEB-01**: structured `details` for web search; Streamlit displays web sources; migrate away from `details.live` as primary freshness carrier.
 - [ ] **Phase 10: README & Credential Smokes** - **DOC-01** full setup/`.env` guide; **TST-01** opt-in pytest smokes for GigaChat + Tavily keys.
 
@@ -126,7 +126,10 @@ Plans:
   2. **Tavily** is invoked only when the **RAG sufficiency** evaluation fails or evidence is empty.
   3. **f1api.dev** is not called from `/next_message` synthesis; code is removed or disabled per SRCH-02.
   4. Search/tool usage is **bounded** (max calls, timeouts) and failures surface a **degraded RU** message.
-**Plans**: TBD (08-01, 08-02 suggested)
+**Plans**: 2 (08-01, 08-02)
+Plans:
+- [x] 08-01-PLAN.md — LangGraph skeleton, sufficiency gate, Tavily wrapper, offline routing tests.
+- [x] 08-02-PLAN.md — Wire `/next_message`, GigaChat web path, remove f1api, test migration.
 
 ### Phase 9: Web Provenance — API & Streamlit
 **Goal**: Clients see **web search** provenance and citations when Tavily is used; UI aligned with new `details` fields.
@@ -162,6 +165,6 @@ Phases execute in numeric order: … → 5 → **6** → **7** → **8** → **9
 | 5. Live Enrichment & Freshness | 2/2 | Complete | 2026-03-27 |
 | 6. GigaChat Classic RAG | 2/2 | Complete | 2026-03-27 |
 | 7. Streamlit UI & Local Run | 2/2 | Complete | 2026-03-27 |
-| 8. LangGraph Supervisor & Tavily Tooling | 0/TBD | Planned | — |
+| 8. LangGraph Supervisor & Tavily Tooling | 2/2 | Complete | 2026-03-28 |
 | 9. Web Provenance — API & Streamlit | 0/TBD | Planned | — |
 | 10. README & Credential Smokes | 0/TBD | Planned | — |

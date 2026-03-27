@@ -9,13 +9,13 @@ Scoped 2026-03-27 — **LangGraph** supervisor with **GigaChat**; **RAG sufficie
 
 ### Agent orchestration (Phase 8)
 
-- [ ] **AGT-01**: The assistant processes each user turn through a **LangGraph** (or equivalent compiled graph) with a **supervisor** node that can delegate to **RAG** and **tool** subgraphs; **GigaChat** is the primary model for routing, Tavily query formulation, and final synthesis (template/disclosure fallback on LLM outage preserved where applicable).
-- [ ] **AGT-02**: After retrieval, the system **evaluates whether RAG evidence is sufficient** to answer (explicit rules and/or LLM judge); only if **not sufficient** does it invoke **Tavily**.
+- [x] **AGT-01**: The assistant processes each user turn through a **LangGraph** (or equivalent compiled graph) with a **supervisor** node that can delegate to **RAG** and **tool** subgraphs; **GigaChat** is the primary model for routing, Tavily query formulation, and final synthesis (template/disclosure fallback on LLM outage preserved where applicable). *(Phase 8)*
+- [x] **AGT-02**: After retrieval, the system **evaluates whether RAG evidence is sufficient** to answer (explicit rules and/or LLM judge); only if **not sufficient** does it invoke **Tavily**. *(Phase 8)*
 
 ### Web search & deprecation (Phase 8–9)
 
-- [ ] **SRCH-01**: When RAG is insufficient, the assistant uses **LangChain**-wrapped **Tavily Search**: **GigaChat** produces a **search query**, results are retrieved, and the model **synthesizes a Russian answer** grounded in returned sources (URLs surfaced for citations).
-- [ ] **SRCH-02**: The **f1api.dev** (or dedicated F1 REST) client **is not used** in the `/next_message` answer pipeline; code paths and dependencies are removed or gated off in favor of the Tavily branch.
+- [x] **SRCH-01**: When RAG is insufficient, the assistant uses **LangChain**-wrapped **Tavily Search**: **GigaChat** produces a **search query**, results are retrieved, and the model **synthesizes a Russian answer** grounded in returned sources (URLs surfaced for citations). *(Phase 8)*
+- [x] **SRCH-02**: The **f1api.dev** (or dedicated F1 REST) client **is not used** in the `/next_message` answer pipeline; code paths and dependencies are removed or gated off in favor of the Tavily branch. *(Phase 8)*
 
 ### API / UI contract (Phase 9)
 
@@ -129,16 +129,16 @@ Deferred to future release. Tracked but not in the current roadmap milestone.
 | UI-02 | Phase 7 | Complete |
 | UI-03 | Phase 7 | Complete |
 | RUN-01 | Phase 7 | Complete |
-| AGT-01 | Phase 8 | Planned |
-| AGT-02 | Phase 8 | Planned |
-| SRCH-01 | Phase 8 | Planned |
-| SRCH-02 | Phase 8 | Planned |
+| AGT-01 | Phase 8 | Complete |
+| AGT-02 | Phase 8 | Complete |
+| SRCH-01 | Phase 8 | Complete |
+| SRCH-02 | Phase 8 | Complete |
 | WEB-01 | Phase 9 | Planned |
 | DOC-01 | Phase 10 | Planned |
 | TST-01 | Phase 10 | Planned |
 
 **Coverage (v1.1):** Phases 6–7 requirements complete.  
-**Coverage (v1.2):** Phases 8–10 — requirements defined; execution pending.
+**Coverage (v1.2):** Phase 8 complete (AGT/SRCH); Phases 9–10 pending.
 
 ---
-*Last updated: 2026-03-27 — v1.2 requirements added (phases 8–10)*
+*Last updated: 2026-03-28 — Phase 8 requirements verified*

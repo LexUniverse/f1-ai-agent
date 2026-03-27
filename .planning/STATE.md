@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Roadmap ready — discuss or plan phase 8
-stopped_at: Phase 8 planned
-last_updated: "2026-03-27T22:31:25.544Z"
-last_activity: 2026-03-27 — v1.2 requirements + roadmap (phases 8–10) committed
+status: roadmap_ready
+stopped_at: Phase 8 complete — plan or discuss phase 9
+last_updated: "2026-03-28T12:00:00.000Z"
+last_activity: 2026-03-28
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 18
 ---
 
 # Project State
@@ -20,16 +20,16 @@ progress:
 See: `.planning/PROJECT.md` (v1.2 — supervisor, Tavily, README, integration tests)
 
 **Core value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.  
-**Current focus:** v1.2 — LangGraph orchestration, web search fallback, documentation and credential smokes
+**Current focus:** Phase 08 — langgraph-supervisor-tavily-tooling
 
 ## Current Position
 
-Phase: **8** (not started — planning)  
-Plan: —  
-Status: Roadmap ready — discuss or plan phase 8  
-Last activity: 2026-03-27 — v1.2 requirements + roadmap (phases 8–10) committed
+Phase: 9
+Plan: Not started
+Status: Phase 8 complete — next: phase 9 (web provenance)
+Last activity: 2026-03-28
 
-Progress: Phases 1–7 complete; v1.2 execution begins at phase 8.
+Progress: Phases 1–8 complete; v1.2 continues at phase 9.
 
 ## Performance Metrics
 
@@ -56,5 +56,5 @@ _None yet._
 
 ## Session Continuity
 
-Last session: 2026-03-27T22:31:25.535Z
-Stopped at: Phase 8 planned
+Last session: 2026-03-28
+Stopped at: Phase 8 complete
