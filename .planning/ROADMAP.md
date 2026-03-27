@@ -67,7 +67,10 @@ Plans:
   1. User can ask in Russian and receive a structured answer format consistently.
   2. User answer always includes an explicit confidence level and source citations.
   3. User receives a clear abstention/degraded response instead of fabricated claims when supporting evidence is insufficient.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 04-01-PLAN.md — Typed RU QnA models, deterministic builder (`src/answer/russian_qna.py`), `/next_message` success `details` + confidence in `message`.
+- [ ] 04-02-PLAN.md — Pytest contract coverage for structured answers, citations order, and `RETRIEVAL_NO_EVIDENCE` abstention.
 
 ### Phase 5: Live Enrichment & Freshness
 **Goal**: Live data augments answers only when needed, with transparent freshness and outage behavior.
@@ -89,5 +92,5 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 | 1. Access Control | 2/2 | Complete | 2026-03-27 |
 | 2. Async Backend Contracts | 2/2 | Complete | 2026-03-27 |
 | 3. Historical RAG Grounding | 0/2 | Not started | - |
-| 4. RU Q&A Answer Reliability | 0/TBD | Not started | - |
+| 4. RU Q&A Answer Reliability | 0/2 | Not started | - |
 | 5. Live Enrichment & Freshness | 0/TBD | Not started | - |
