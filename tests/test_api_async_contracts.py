@@ -73,3 +73,26 @@ def test_next_message_contract_flow(client):
     missing = client.post("/next_message", headers={"X-Session-Id": "unknown"}, json={})
     assert missing.status_code == 404
     assert_error_envelope(missing.json(), "SESSION_NOT_FOUND")
+
+
+def test_next_message_uses_inline_retrieval_pipeline(client, monkeypatch):
+    start = client.post("/start_chat", json={"access_code": "ABC123"})
+    sid = start.json()["session_id"]
+    session = client.app.state.session_store.get(sid)
+    assert session is not None
+    session.next_message = "Макс Ферстаппен в Монако"
+
+    monkeypatch.setattr("src.api.chat.resolve_entities", lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]))
+    monkeypatch.setattr(
+        "src.api.chat.retrieve_historical_context",
+        lambda *_args, **_kwargs: [{"source_id": "f1db:race:2023-monaco", "snippet": "Verstappen won Monaco GP 2023", "score": 0.91}],
+    )
+
+    response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert "Историческая сводка" in payload["message"]
+    assert payload["details"]["code"] == "OK"
+    assert payload["details"]["evidence"]
+    assert payload["details"]["evidence"][0]["used_in_answer"] is True
