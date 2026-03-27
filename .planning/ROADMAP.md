@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0 (Phases 1–5)** shipped: access control, API contracts, grounded retrieval, structured answer quality, and live-data reliability. **v1.1 (Phases 6–7)** adds **GigaChat classic RAG** (chunk-grounded generation + template fallback) and a **Streamlit** UI with **local run only** (no Docker).
+This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0 (Phases 1–5)** shipped: access control, API contracts, grounded retrieval, structured answer quality, and live-data reliability. **v1.1 (Phases 6–7)** adds **GigaChat classic RAG** (chunk-grounded generation + template fallback) and a **Streamlit** UI with **local run only** (no Docker). **v1.2 (Phases 8–10)** adds a **LangGraph supervisor** (GigaChat core), **RAG sufficiency → Tavily (LangChain)**, removal of the **f1 API** answer path, **WEB-01** client contract updates, and **README + integration smokes** for credentials.
 
 ## Phases
 
@@ -19,6 +19,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees. *(Completed: 2026-03-27)*
 - [x] **Phase 6: GigaChat Classic RAG** - Chunk-grounded Russian answers via GigaChat; `gigachat_rag.py` replaces `russian_qna.py`; template fallback on LLM outage. *(Completed: 2026-03-27)*
 - [x] **Phase 7: Streamlit UI & Local Run** - Chat UI (`/start_chat`, status polling, `/next_message`); show message, confidence, citations, `details.live`; document `python api.py` + Streamlit (no Docker). *(Completed: 2026-03-27)*
+- [ ] **Phase 8: LangGraph Supervisor & Tavily Tooling** - GigaChat-centric **LangGraph**: RAG node, sufficiency gate, **LangChain Tavily** tool node; remove **f1api** from `/next_message` pipeline; caps/timeouts for search.
+- [ ] **Phase 9: Web Provenance — API & Streamlit** - **WEB-01**: structured `details` for web search; Streamlit displays web sources; migrate away from `details.live` as primary freshness carrier.
+- [ ] **Phase 10: README & Credential Smokes** - **DOC-01** full setup/`.env` guide; **TST-01** opt-in pytest smokes for GigaChat + Tavily keys.
 
 ## Phase Details
 
@@ -114,10 +117,41 @@ Plans:
 - [x] 07-01-PLAN.md — Start chat question, httpx client, Streamlit UI (UI-01..03).
 - [x] 07-02-PLAN.md — Root `api.py`, README local run, `.env.example` F1_API_BASE_URL (RUN-01).
 
+### Phase 8: LangGraph Supervisor & Tavily Tooling
+**Goal**: **GigaChat** supervises **RAG** and **Tavily** branches with an explicit sufficiency gate; **f1api** removed from the answering path.
+**Depends on**: Phase 7  
+**Requirements**: AGT-01, AGT-02, SRCH-01, SRCH-02  
+**Success Criteria** (what must be TRUE):
+  1. A compiled **LangGraph** (or equivalent) runs per user turn with supervisor delegation to **RAG** and **tool** nodes.
+  2. **Tavily** is invoked only when the **RAG sufficiency** evaluation fails or evidence is empty.
+  3. **f1api.dev** is not called from `/next_message` synthesis; code is removed or disabled per SRCH-02.
+  4. Search/tool usage is **bounded** (max calls, timeouts) and failures surface a **degraded RU** message.
+**Plans**: TBD (08-01, 08-02 suggested)
+
+### Phase 9: Web Provenance — API & Streamlit
+**Goal**: Clients see **web search** provenance and citations when Tavily is used; UI aligned with new `details` fields.
+**Depends on**: Phase 8  
+**Requirements**: WEB-01  
+**Success Criteria** (what must be TRUE):
+  1. API responses include a structured **web** section (query, URLs, optional snippets) when Tavily contributed.
+  2. Streamlit renders **web** sources distinctly from **RAG** chunk citations.
+  3. Regression: historical **RAG-only** answers still show correct confidence and citations.
+**Plans**: TBD
+
+### Phase 10: README & Credential Smokes
+**Goal**: New contributors can run locally from **README** alone; maintainers can verify **live keys** via pytest.
+**Depends on**: Phase 9  
+**Requirements**: DOC-01, TST-01  
+**Success Criteria** (what must be TRUE):
+  1. README covers install, index (if any), **API + Streamlit** commands, and every **`.env`** variable with **acquisition links**.
+  2. `.env.example` matches documented variables (placeholders only).
+  3. Pytest defines **`integration` or `smoke` marker**; documented env flag runs real GigaChat + Tavily checks; default CI stays offline/mocked.
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: … → 5 → **6** → **7**
+Phases execute in numeric order: … → 5 → **6** → **7** → **8** → **9** → **10**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -128,3 +162,6 @@ Phases execute in numeric order: … → 5 → **6** → **7**
 | 5. Live Enrichment & Freshness | 2/2 | Complete | 2026-03-27 |
 | 6. GigaChat Classic RAG | 2/2 | Complete | 2026-03-27 |
 | 7. Streamlit UI & Local Run | 2/2 | Complete | 2026-03-27 |
+| 8. LangGraph Supervisor & Tavily Tooling | 0/TBD | Planned | — |
+| 9. Web Provenance — API & Streamlit | 0/TBD | Planned | — |
+| 10. README & Credential Smokes | 0/TBD | Planned | — |
