@@ -1,0 +1,163 @@
+import json
+from types import SimpleNamespace
+
+from src.answer.gigachat_rag import (
+    GIGACHAT_SUCCESS_ROUTE,
+    GIGACHAT_TEMPLATE_FALLBACK_DISCLOSURE_RU,
+    GigachatRUSynthesisResult,
+    gigachat_synthesize_historical,
+)
+from src.answer.russian_qna import build_sources_block_ru_from_evidence, qna_confidence_from_evidence
+from src.models.api_contracts import AnswerSection, EvidenceItem, StructuredRUAnswer
+
+
+def _fake_response_content(obj: dict) -> SimpleNamespace:
+    text = json.dumps(obj, ensure_ascii=False)
+    return SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=text))]
+    )
+
+
+def test_gigachat_synthesize_historical_returns_hybrid_structured_answer(monkeypatch):
+    evidence = [
+        EvidenceItem(
+            source_id="f1db:x",
+            snippet="Фрагмент про гонку.",
+            entity_tags=[],
+            rank_score=0.9,
+        )
+    ]
+
+    class FakeGC:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def chat(self, chat):
+            return _fake_response_content(
+                {
+                    "message": "Краткий ответ.",
+                    "sections": [{"heading": "Сводка", "body": "Развërнутый текст."}],
+                }
+            )
+
+    monkeypatch.setattr("src.answer.gigachat_rag.GigaChat", FakeGC)
+    result = gigachat_synthesize_historical(evidence=evidence, user_question="что там?")
+    assert result.confidence == qna_confidence_from_evidence(evidence)
+    block, _ = build_sources_block_ru_from_evidence(evidence)
+    assert block in result.structured_answer.sources_block_ru
+    assert "[1]" in result.structured_answer.sources_block_ru
+    assert "f1db:x" in result.structured_answer.sources_block_ru
+    assert result.message == "Краткий ответ."
+    assert result.structured_answer.sections[0].heading == "Сводка"
+
+
+def test_chat_historical_next_message_uses_synthesis_route_when_mocked(client, monkeypatch):
+    start = client.post("/start_chat", json={"access_code": "ABC123"})
+    sid = start.json()["session_id"]
+    session = client.app.state.session_store.get(sid)
+    assert session is not None
+    session.next_message = "fixture query"
+
+    monkeypatch.setattr(
+        "src.api.chat.resolve_entities",
+        lambda _query: ("q", ["driver:x"], ["driver:x"]),
+    )
+    monkeypatch.setattr(
+        "src.api.chat.retrieve_historical_context",
+        lambda *_args, **_kwargs: [
+            {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
+        ],
+    )
+
+    def fake_hist(*, evidence, user_question):
+        block, cc = build_sources_block_ru_from_evidence(evidence)
+        return GigachatRUSynthesisResult(
+            message="Мок LLM сообщение.",
+            structured_answer=StructuredRUAnswer(
+                sections=[AnswerSection(heading="Сводка", body="Тело.")],
+                sources_block_ru=block,
+                citation_count=cc,
+            ),
+            confidence=qna_confidence_from_evidence(evidence),
+        )
+
+    monkeypatch.setattr("src.api.chat.gigachat_synthesize_historical", fake_hist)
+    response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert payload["details"]["synthesis"]["route"] == GIGACHAT_SUCCESS_ROUTE
+    assert payload["message"] == "Мок LLM сообщение."
+
+
+def test_historical_fallback_sets_synthesis_route_and_disclosure(client, monkeypatch):
+    start = client.post("/start_chat", json={"access_code": "ABC123"})
+    sid = start.json()["session_id"]
+    session = client.app.state.session_store.get(sid)
+    assert session is not None
+    session.next_message = "fixture query"
+
+    monkeypatch.setattr(
+        "src.api.chat.resolve_entities",
+        lambda _query: ("q", ["driver:x"], ["driver:x"]),
+    )
+    monkeypatch.setattr(
+        "src.api.chat.retrieve_historical_context",
+        lambda *_args, **_kwargs: [
+            {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
+        ],
+    )
+    monkeypatch.setattr(
+        "src.api.chat.gigachat_synthesize_historical",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+
+    response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ready"
+    assert payload["details"]["synthesis"]["route"] == "template_fallback"
+    assert payload["details"]["synthesis"]["gigachat_error_class"] == "RuntimeError"
+    assert GIGACHAT_TEMPLATE_FALLBACK_DISCLOSURE_RU in payload["message"]
+
+
+def test_success_path_has_no_disclosure_phrase(client, monkeypatch):
+    start = client.post("/start_chat", json={"access_code": "ABC123"})
+    sid = start.json()["session_id"]
+    session = client.app.state.session_store.get(sid)
+    assert session is not None
+    session.next_message = "fixture query"
+
+    monkeypatch.setattr(
+        "src.api.chat.resolve_entities",
+        lambda _query: ("q", ["driver:x"], ["driver:x"]),
+    )
+    monkeypatch.setattr(
+        "src.api.chat.retrieve_historical_context",
+        lambda *_args, **_kwargs: [
+            {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
+        ],
+    )
+
+    def fake_hist(*, evidence, user_question):
+        block, cc = build_sources_block_ru_from_evidence(evidence)
+        return GigachatRUSynthesisResult(
+            message="Успех без шаблона.",
+            structured_answer=StructuredRUAnswer(
+                sections=[AnswerSection(heading="Сводка", body="Тело.")],
+                sources_block_ru=block,
+                citation_count=cc,
+            ),
+            confidence=qna_confidence_from_evidence(evidence),
+        )
+
+    monkeypatch.setattr("src.api.chat.gigachat_synthesize_historical", fake_hist)
+    response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
+    payload = response.json()
+    assert GIGACHAT_TEMPLATE_FALLBACK_DISCLOSURE_RU not in payload["message"]

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: product-surface-gigachat
-status: Ready to plan
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-27T19:38:39.566Z"
-last_activity: 2026-03-27 — Phase 6 discuss-phase complete; context captured
+status: ready_to_plan
+stopped_at: Phase 6 complete
+last_updated: "2026-03-27T20:15:00.000Z"
+last_activity: 2026-03-27 — Phase 6 executed; GigaChat RAG + fallback shipped
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
+  completed_phases: 6
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -20,27 +20,27 @@ progress:
 See: `.planning/PROJECT.md` (v1.1 — GigaChat classic RAG, Streamlit, local run)
 
 **Core value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.  
-**Current focus:** **Phase 6** — GigaChat classic RAG (priority)
+**Current focus:** **Phase 7** — Streamlit UI & local run
 
 ## Current Position
 
-Phase: **6** (next)  
-Plan: Not planned yet  
-Status: Ready to plan  
-Last activity: 2026-03-27 — v1.1 requirements & roadmap updated
+Phase: **7** (next)  
+Plan: Not started  
+Status: Ready to plan Phase 7  
+Last activity: 2026-03-27 — Phase 6 execution complete; all tests green
 
-Progress: [░░░░░░░░░░] v1.1 not started (v1.0: 5/5 phases complete)
+Progress: Phase 6/7 complete for synthesis path; Streamlit + runbook remains.
 
 ## Performance Metrics
 
-*Metrics will update as v1.1 plans execute.*
+*Metrics will update as v1.1 Phase 7 executes.*
 
 ## Accumulated Context
 
 ### Decisions
 
 - **v1.1:** No Docker — local `python api.py` + Streamlit.
-- **v1.1:** Primary synthesis moves to `gigachat_rag.py`; template fallback on GigaChat outage.
+- **v1.1:** Primary synthesis in `gigachat_rag.py`; template fallback on GigaChat outage with `details.synthesis.route` + RU disclosure.
 - **v1.1:** Streamlit must show message, confidence, citations, `details.live`.
 
 Recent decisions from v1.0 remain in `PROJECT.md` Key Decisions table.
@@ -57,6 +57,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27T19:38:39.557Z
-Stopped at: Phase 6 context gathered
-Next step: `/gsd-plan-phase 6`
+Last session: 2026-03-27
+Stopped at: Phase 6 complete
+Next step: `/gsd-discuss-phase 7` or `/gsd-plan-phase 7`

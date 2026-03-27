@@ -2,8 +2,31 @@ import chromadb
 from uuid import UUID
 
 from conftest import assert_error_envelope
+from src.answer.gigachat_rag import GigachatRUSynthesisResult
+from src.answer.russian_qna import build_sources_block_ru_from_evidence, qna_confidence_from_evidence
 from src.api.chat import PROCESS_CALLS
+from src.models.api_contracts import AnswerSection, StructuredRUAnswer
 from src.retrieval.retriever import COLLECTION_NAME
+
+
+def _fake_gigachat_historical(*, evidence, user_question: str = "", template_overlay: str | None = None):
+    block, cc = build_sources_block_ru_from_evidence(evidence)
+    summary = evidence[0].snippet.strip()[:120]
+    conf = qna_confidence_from_evidence(evidence)
+    msg = (
+        template_overlay
+        if template_overlay is not None
+        else f"Историческая сводка: {summary}. Уверенность: {conf.tier_ru}."
+    )
+    return GigachatRUSynthesisResult(
+        message=msg,
+        structured_answer=StructuredRUAnswer(
+            sections=[AnswerSection(heading="Сводка", body=summary)],
+            sources_block_ru=block,
+            citation_count=cc,
+        ),
+        confidence=conf,
+    )
 
 
 def _seed_historical_collection(*, canonical_entity_id: str, source_id: str, snippet: str):
@@ -109,6 +132,10 @@ def test_next_message_uses_inline_retrieval_pipeline(client, monkeypatch):
         "src.api.chat.retrieve_historical_context",
         lambda *_args, **_kwargs: [{"source_id": "f1db:race:2023-monaco", "snippet": "Verstappen won Monaco GP 2023", "score": 0.91}],
     )
+    monkeypatch.setattr(
+        "src.api.chat.gigachat_synthesize_historical",
+        lambda **kw: _fake_gigachat_historical(**kw),
+    )
 
     response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
     assert response.status_code == 200
@@ -136,6 +163,10 @@ def test_response_contains_traceable_evidence_without_monkeypatch(client, monkey
     monkeypatch.setattr(
         "src.api.chat.resolve_entities",
         lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]),
+    )
+    monkeypatch.setattr(
+        "src.api.chat.gigachat_synthesize_historical",
+        lambda **kw: _fake_gigachat_historical(**kw),
     )
 
     response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})

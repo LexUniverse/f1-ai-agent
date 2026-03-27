@@ -29,10 +29,10 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ Historical answers are grounded in indexed f1db retrieval with traceable evidence — validated in Phase 03 (historical-rag-grounding)
 - ✓ Russian `/next_message` responses expose structured QnA details, explicit confidence, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability)
 - ✓ Live enrichment after historical retrieval uses a deterministic gate, surfaces `LiveDetails` / `as_of` in responses, and returns a fixed Russian degraded message when f1api.dev is unavailable — validated in Phase 05 (live-enrichment-freshness)
+- ✓ GigaChat classic RAG on historical and live success paths with hybrid citations, deterministic confidence, and explicit template fallback + disclosure when the LLM fails — validated in Phase 06 (gigachat-classic-rag)
 
 ### Active (v1.1)
 
-- [ ] User can ask F1 questions in Russian and receive **GigaChat-grounded** answers when retrieval returns evidence, with **template fallback** if the LLM path fails.
 - [ ] User can run the stack **locally** via documented **API + Streamlit** commands (no Docker in v1.1).
 
 ### Out of Scope
@@ -81,4 +81,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 — milestone v1.1 scoped (GigaChat RAG + Streamlit, local run)*
+*Last updated: 2026-03-27 — Phase 6 validated (GigaChat RAG + template fallback); Phase 7 (Streamlit) next*

@@ -20,19 +20,24 @@ def _truncate(s: str, max_len: int) -> str:
     return s[:max_len] + "…"
 
 
-def build_structured_ru_answer(evidence: list[EvidenceItem]) -> StructuredRUAnswer:
-    first = evidence[0].snippet if evidence else ""
-    body = _truncate(first, 400)
-    sections = [AnswerSection(heading="Сводка", body=body)]
+def build_sources_block_ru_from_evidence(evidence: list[EvidenceItem]) -> tuple[str, int]:
     lines: list[str] = ["Источники:"]
     for n, item in enumerate(evidence, start=1):
         snip = _truncate(item.snippet, 80)
         lines.append(f"[{n}] {item.source_id} — {snip}")
     sources_block_ru = "\n".join(lines)
+    return sources_block_ru, len(evidence)
+
+
+def build_structured_ru_answer(evidence: list[EvidenceItem]) -> StructuredRUAnswer:
+    first = evidence[0].snippet if evidence else ""
+    body = _truncate(first, 400)
+    sections = [AnswerSection(heading="Сводка", body=body)]
+    sources_block_ru, citation_count = build_sources_block_ru_from_evidence(evidence)
     return StructuredRUAnswer(
         sections=sections,
         sources_block_ru=sources_block_ru,
-        citation_count=len(evidence),
+        citation_count=citation_count,
     )
 
 

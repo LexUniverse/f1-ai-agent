@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability. *(Completed: 2026-03-27)*
 - [x] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention. *(Completed: 2026-03-27)*
 - [x] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees. *(Completed: 2026-03-27)*
-- [ ] **Phase 6: GigaChat Classic RAG** - Chunk-grounded Russian answers via GigaChat; `gigachat_rag.py` replaces `russian_qna.py`; template fallback on LLM outage.
+- [x] **Phase 6: GigaChat Classic RAG** - Chunk-grounded Russian answers via GigaChat; `gigachat_rag.py` replaces `russian_qna.py`; template fallback on LLM outage. *(Completed: 2026-03-27)*
 - [ ] **Phase 7: Streamlit UI & Local Run** - Chat UI (`/start_chat`, status polling, `/next_message`); show message, confidence, citations, `details.live`; document `python api.py` + Streamlit (no Docker).
 
 ## Phase Details
@@ -95,7 +95,10 @@ Plans:
   1. With evidence, the model response is driven by GigaChat using chunk context from the existing retrieval pipeline.
   2. GigaChat outage or error triggers a documented fallback path (template / legacy builder behavior) without silent hallucination.
   3. Primary synthesis module is `gigachat_rag.py`; `russian_qna.py` is no longer the main path (removed or helper-only).
-**Plans**: (to plan) — use `/gsd-plan-phase 6`
+**Plans**: 2 (06-01, 06-02)
+Plans:
+- [x] 06-01-PLAN.md — `gigachat_rag.py`, chat wiring, hybrid citations, `gigachat==0.2.0`, mocked tests.
+- [x] 06-02-PLAN.md — `template_fallback` synthesis metadata, fixed RU disclosure, live + historical fallback tests.
 
 ### Phase 7: Streamlit UI & Local Run
 **Goal**: Operators run **API + Streamlit locally** and use the async chat contract end-to-end with full visibility into structured fields.
@@ -120,5 +123,5 @@ Phases execute in numeric order: … → 5 → **6** → **7**
 | 3. Historical RAG Grounding | 4/4 | Complete | 2026-03-27 |
 | 4. RU Q&A Answer Reliability | 2/2 | Complete | 2026-03-27 |
 | 5. Live Enrichment & Freshness | 2/2 | Complete | 2026-03-27 |
-| 6. GigaChat Classic RAG | 0/? | Not started | - |
+| 6. GigaChat Classic RAG | 2/2 | Complete | 2026-03-27 |
 | 7. Streamlit UI & Local Run | 0/? | Not started | - |

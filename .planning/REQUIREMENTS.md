@@ -9,9 +9,9 @@ Scoped 2026-03-27 — **local run only (no Docker)**; **Phase 6** classic RAG vi
 
 ### GigaChat classic RAG (Phase 6)
 
-- [ ] **GC-01**: When historical retrieval returns evidence, the assistant generates the Russian answer with **GigaChat** using a prompt that includes **retrieved chunks** (retrieval → prompt → LLM → RU answer), preserving traceable citations in API `details`.
-- [ ] **GC-02**: When **GigaChat is unavailable or errors**, `/next_message` **falls back** to deterministic **template** synthesis (equivalent behavior to pre-6 template path) with explicit degraded signaling where appropriate — no silent substitution of fabricated facts.
-- [ ] **GC-03**: Primary LLM RAG implementation lives in **`src/answer/gigachat_rag.py`**; **`src/answer/russian_qna.py`** is removed or reduced to **shared helpers / template fallback only** (per implementation plan).
+- [x] **GC-01**: When historical retrieval returns evidence, the assistant generates the Russian answer with **GigaChat** using a prompt that includes **retrieved chunks** (retrieval → prompt → LLM → RU answer), preserving traceable citations in API `details`.
+- [x] **GC-02**: When **GigaChat is unavailable or errors**, `/next_message` **falls back** to deterministic **template** synthesis (equivalent behavior to pre-6 template path) with explicit degraded signaling where appropriate — no silent substitution of fabricated facts.
+- [x] **GC-03**: Primary LLM RAG implementation lives in **`src/answer/gigachat_rag.py`**; **`src/answer/russian_qna.py`** is removed or reduced to **shared helpers / template fallback only** (per implementation plan).
 
 ### Streamlit UI (Phase 7)
 
@@ -95,15 +95,15 @@ Deferred to future release. Tracked but not in the current roadmap milestone.
 | API-02 | Phase 2 | Complete |
 | API-03 | Phase 2 | Complete |
 | API-04 | Phase 2 | Complete |
-| GC-01 | Phase 6 | Pending |
-| GC-02 | Phase 6 | Pending |
-| GC-03 | Phase 6 | Pending |
+| GC-01 | Phase 6 | Complete |
+| GC-02 | Phase 6 | Complete |
+| GC-03 | Phase 6 | Complete |
 | UI-01 | Phase 7 | Pending |
 | UI-02 | Phase 7 | Pending |
 | UI-03 | Phase 7 | Pending |
 | RUN-01 | Phase 7 | Pending |
 
-**Coverage (v1.1):** 8 requirements mapped to Phases 6–7 — all pending until execution.
+**Coverage (v1.1):** Phase 6 requirements complete; Phase 7 (UI + local run) pending.
 
 ---
 *Last updated: 2026-03-27 — v1.1 requirements added (GigaChat RAG, Streamlit, local run)*
