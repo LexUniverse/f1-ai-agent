@@ -1,7 +1,33 @@
 # Requirements: F1 Assistant (GigaChat + LangGraph)
 
-**Defined:** 2026-03-26  
+**Defined:** 2026-03-26 / **v1.2 scoped:** 2026-03-27  
 **Core Value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
+
+## v1.2 Requirements (milestone active)
+
+Scoped 2026-03-27 — **LangGraph** supervisor with **GigaChat**; **RAG sufficiency** → **Tavily (LangChain)**; remove **f1 API** live path; **README** + **credential smoke tests**.
+
+### Agent orchestration (Phase 8)
+
+- [ ] **AGT-01**: The assistant processes each user turn through a **LangGraph** (or equivalent compiled graph) with a **supervisor** node that can delegate to **RAG** and **tool** subgraphs; **GigaChat** is the primary model for routing, Tavily query formulation, and final synthesis (template/disclosure fallback on LLM outage preserved where applicable).
+- [ ] **AGT-02**: After retrieval, the system **evaluates whether RAG evidence is sufficient** to answer (explicit rules and/or LLM judge); only if **not sufficient** does it invoke **Tavily**.
+
+### Web search & deprecation (Phase 8–9)
+
+- [ ] **SRCH-01**: When RAG is insufficient, the assistant uses **LangChain**-wrapped **Tavily Search**: **GigaChat** produces a **search query**, results are retrieved, and the model **synthesizes a Russian answer** grounded in returned sources (URLs surfaced for citations).
+- [ ] **SRCH-02**: The **f1api.dev** (or dedicated F1 REST) client **is not used** in the `/next_message` answer pipeline; code paths and dependencies are removed or gated off in favor of the Tavily branch.
+
+### API / UI contract (Phase 9)
+
+- [ ] **WEB-01**: When web search is used, the API exposes **structured web evidence** (e.g. query, source URLs, snippets/metadata) in `details` (or successor fields) so clients can display provenance; **Streamlit** is updated to show **web** sources alongside RAG citations (migrate away from **`details.live`** as the primary freshness signal where appropriate).
+
+### Documentation (Phase 10)
+
+- [ ] **DOC-01**: **README** documents **clone/setup**, **Python environment**, **index/build** if required, how to run **API** and **Streamlit**, and a complete **`.env` / `.env.example` checklist** including **GigaChat**, **Tavily**, and other required keys **with links or instructions to obtain each key**.
+
+### Quality / integration (Phase 10)
+
+- [ ] **TST-01**: **Pytest** includes **smoke or integration** tests (clearly marked, **optional in CI** via marker/env flag) that verify **GigaChat** responds with valid credentials and that **Tavily** (and other required `.env` secrets) are **accepted by upstream APIs** (not merely present); default unit runs remain **mocked/offline**.
 
 ## v1.1 Requirements (milestone complete)
 
@@ -39,9 +65,9 @@ Requirements for the initial backend milestone. Traceability references Phases 1
 - [x] **RAG-02**: User queries are matched against RU/EN entity aliases (drivers, teams, races).
 - [x] **RAG-03**: User receives traceable retrieved context references used for final answer synthesis.
 
-### Live API + Reliability
+### Live API + Reliability (v1.0 – superseded for enrichment by v1.2 Tavily)
 
-- [x] **LIVE-01**: User receives live-enriched answer when RAG context is insufficient and live data is required.
+- [x] **LIVE-01**: User receives live-enriched answer when RAG context is insufficient and live data is required. *(v1.0–v1.1: f1api; v1.2 replaces enrichment with Tavily — see SRCH-01.)*
 - [x] **LIVE-02**: User receives clear degraded-mode message when live API is unavailable.
 - [x] **LIVE-03**: User answer includes freshness metadata (`as_of`) for live-dependent responses.
 
@@ -75,6 +101,7 @@ Deferred to future release. Tracked but not in the current roadmap milestone.
 | Voice-first assistant | Deferred by product owner |
 | Advanced personalization | Deferred until baseline quality is proven |
 | **Docker / Compose for v1.1** | **Milestone decision — v1.1 uses local API + Streamlit only** |
+| **f1api.dev in v1.2+ answer path** | Replaced by Tavily web search per SRCH-02 |
 
 ## Traceability
 
@@ -102,8 +129,16 @@ Deferred to future release. Tracked but not in the current roadmap milestone.
 | UI-02 | Phase 7 | Complete |
 | UI-03 | Phase 7 | Complete |
 | RUN-01 | Phase 7 | Complete |
+| AGT-01 | Phase 8 | Planned |
+| AGT-02 | Phase 8 | Planned |
+| SRCH-01 | Phase 8 | Planned |
+| SRCH-02 | Phase 8 | Planned |
+| WEB-01 | Phase 9 | Planned |
+| DOC-01 | Phase 10 | Planned |
+| TST-01 | Phase 10 | Planned |
 
-**Coverage (v1.1):** Phases 6–7 requirements complete.
+**Coverage (v1.1):** Phases 6–7 requirements complete.  
+**Coverage (v1.2):** Phases 8–10 — requirements defined; execution pending.
 
 ---
-*Last updated: 2026-03-27 — Phase 7 complete; UI + RUN requirements verified*
+*Last updated: 2026-03-27 — v1.2 requirements added (phases 8–10)*
