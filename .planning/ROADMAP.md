@@ -12,7 +12,7 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian by sequencing
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Access Control** - Restrict assistant usage to valid personal allowlist codes.
+- [x] **Phase 1: Access Control** - Restrict assistant usage to valid personal allowlist codes. *(Completed: 2026-03-27)*
 - [ ] **Phase 2: Async Backend Contracts** - Provide stable async chat endpoints with strict schemas.
 - [ ] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability.
 - [ ] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention.
@@ -28,7 +28,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   1. User with a valid personal code can authenticate and access assistant functionality.
   2. User with an invalid or missing code is denied access with an explicit unauthorized message.
   3. Unauthorized requests are blocked before downstream chat processing runs.
-**Plans**: TBD
+**Plans**: 2 (01-01, 01-02)
 
 ### Phase 2: Async Backend Contracts
 **Goal**: Clients can reliably interact with the assistant using typed asynchronous API flows.
@@ -78,7 +78,7 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Access Control | 0/TBD | Not started | - |
+| 1. Access Control | 2/2 | Complete | 2026-03-27 |
 | 2. Async Backend Contracts | 0/TBD | Not started | - |
 | 3. Historical RAG Grounding | 0/TBD | Not started | - |
 | 4. RU Q&A Answer Reliability | 0/TBD | Not started | - |

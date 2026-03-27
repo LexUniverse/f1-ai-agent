@@ -12,14 +12,13 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Access is restricted by per-user code allowlist authentication — validated in Phase 01 (access-control)
 
 ### Active
 
 - [ ] User can ask F1 questions in Russian and get accurate, structured answers.
 - [ ] System uses RAG first and calls live F1 API only when required information is missing.
 - [ ] If live API is unavailable, system explicitly reports degraded mode and uncertainty.
-- [ ] Access is restricted by per-user code allowlist authentication.
 - [ ] Service is deployable via Docker with working backend API and chat frontend.
 
 ### Out of Scope
@@ -66,4 +65,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-26 after initialization*
+*Last updated: 2026-03-27 after Phase 01 completion*

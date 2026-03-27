@@ -73,8 +73,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | LIVE-01 | Phase 5 | Pending |
 | LIVE-02 | Phase 5 | Pending |
 | LIVE-03 | Phase 5 | Pending |
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
 | API-01 | Phase 2 | Pending |
 | API-02 | Phase 2 | Pending |
 | API-03 | Phase 2 | Pending |
