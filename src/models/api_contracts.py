@@ -36,6 +36,22 @@ class NextMessageResponse(BaseModel):
     details: dict = Field(default_factory=dict)
 
 
+class QnAConfidence(BaseModel):
+    tier_ru: str
+    score: float
+
+
+class AnswerSection(BaseModel):
+    heading: str
+    body: str
+
+
+class StructuredRUAnswer(BaseModel):
+    sections: list[AnswerSection]
+    sources_block_ru: str
+    citation_count: int
+
+
 class EvidenceItem(BaseModel):
     source_id: str
     snippet: str
