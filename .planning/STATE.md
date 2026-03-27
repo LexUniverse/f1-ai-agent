@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: product-surface-gigachat
-status: Ready to plan
-stopped_at: Milestone v1.1 scoped — Phase 6 GigaChat RAG + Phase 7 Streamlit
-last_updated: "2026-03-27T19:30:00.000Z"
-last_activity: 2026-03-27
+milestone: v1.0
+milestone_name: milestone
+status: planning
+stopped_at: Phase 6 context gathered
+last_updated: "2026-03-27T19:32:25.484Z"
+last_activity: 2026-03-27 — v1.1 requirements & roadmap updated
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 12
   completed_plans: 12
-  percent: 0
 ---
 
 # Project State
@@ -58,6 +57,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27  
-Stopped at: v1.1 milestone initialized from user-adjusted scope  
+Last session: 2026-03-27T19:32:25.476Z
+Stopped at: Phase 6 context gathered
 Next step: `/gsd-plan-phase 6` (or `/gsd-discuss-phase 6`)
