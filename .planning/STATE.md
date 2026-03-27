@@ -18,16 +18,16 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-03-26)
+See: `.planning/PROJECT.md` (updated 2026-03-27)
 
 **Core value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
-**Current focus:** Phase 02 — async-backend-contracts
+**Current focus:** Phase 3 - Historical RAG Grounding
 
 ## Current Position
 
 Phase: 3
 Plan: Not started
-Status: Executing Phase 02
+Status: Ready to plan
 Last activity: 2026-03-27
 
 Progress: [░░░░░░░░░░] 0%

@@ -13,7 +13,7 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian by sequencing
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Access Control** - Restrict assistant usage to valid personal allowlist codes. *(Completed: 2026-03-27)*
-- [ ] **Phase 2: Async Backend Contracts** - Provide stable async chat endpoints with strict schemas.
+- [x] **Phase 2: Async Backend Contracts** - Provide stable async chat endpoints with strict schemas. *(Completed: 2026-03-27)*
 - [ ] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability.
 - [ ] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention.
 - [ ] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees.
@@ -52,7 +52,7 @@ Plans:
   1. User receives historical F1 answers grounded in indexed f1db content from ChromaDB.
   2. User can ask using RU or EN names and aliases for drivers, teams, and races and still get relevant retrieval.
   3. User receives traceable retrieved context references that are clearly tied to final answer synthesis.
-**Plans**: TBD
+**Plans**: 2 (02-01, 02-02)
 
 ### Phase 4: RU Q&A Answer Reliability
 **Goal**: Users get structured Russian answers with explicit confidence and safe abstention when evidence is insufficient.
@@ -82,7 +82,7 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Access Control | 2/2 | Complete | 2026-03-27 |
-| 2. Async Backend Contracts | 0/TBD | Not started | - |
+| 2. Async Backend Contracts | 2/2 | Complete | 2026-03-27 |
 | 3. Historical RAG Grounding | 0/TBD | Not started | - |
 | 4. RU Q&A Answer Reliability | 0/TBD | Not started | - |
 | 5. Live Enrichment & Freshness | 0/TBD | Not started | - |
