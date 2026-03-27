@@ -52,7 +52,10 @@ Plans:
   1. User receives historical F1 answers grounded in indexed f1db content from ChromaDB.
   2. User can ask using RU or EN names and aliases for drivers, teams, and races and still get relevant retrieval.
   3. User receives traceable retrieved context references that are clearly tied to final answer synthesis.
-**Plans**: 2 (02-01, 02-02)
+**Plans**: 2 plans
+Plans:
+- [x] 03-01-PLAN.md — Retrieval foundation: dictionary-first RU/EN alias resolver, deterministic Chroma retrieval, and typed evidence contracts.
+- [ ] 03-02-PLAN.md — Inline `/next_message` grounding flow with evidence-to-answer linkage and RAG traceability tests.
 
 ### Phase 4: RU Q&A Answer Reliability
 **Goal**: Users get structured Russian answers with explicit confidence and safe abstention when evidence is insufficient.
@@ -83,6 +86,6 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Access Control | 2/2 | Complete | 2026-03-27 |
 | 2. Async Backend Contracts | 2/2 | Complete | 2026-03-27 |
-| 3. Historical RAG Grounding | 0/TBD | Not started | - |
+| 3. Historical RAG Grounding | 0/2 | Not started | - |
 | 4. RU Q&A Answer Reliability | 0/TBD | Not started | - |
 | 5. Live Enrichment & Freshness | 0/TBD | Not started | - |
