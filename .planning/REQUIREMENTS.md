@@ -3,7 +3,7 @@
 **Defined:** 2026-03-26  
 **Core Value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
-## v1.1 Requirements (milestone in progress)
+## v1.1 Requirements (milestone complete)
 
 Scoped 2026-03-27 — **local run only (no Docker)**; **Phase 6** classic RAG via GigaChat; **Phase 7** Streamlit.
 
@@ -15,13 +15,13 @@ Scoped 2026-03-27 — **local run only (no Docker)**; **Phase 6** classic RAG vi
 
 ### Streamlit UI (Phase 7)
 
-- [ ] **UI-01**: User provides **access_code** and **question**; client calls **`/start_chat`** and stores **`session_id`**.
-- [ ] **UI-02**: Client **polls `/message_status`** until a terminal state, then retrieves the assistant payload via **`/next_message`** consistent with the async contract.
-- [ ] **UI-03**: UI displays **`message`**, **confidence**, **citations** (sources), and **`details.live`** when present.
+- [x] **UI-01**: User provides **access_code** and **question**; client calls **`/start_chat`** and stores **`session_id`**.
+- [x] **UI-02**: Client **polls `/message_status`** until a terminal state, then retrieves the assistant payload via **`/next_message`** consistent with the async contract.
+- [x] **UI-03**: UI displays **`message`**, **confidence**, **citations** (sources), and **`details.live`** when present.
 
 ### Local run (Phase 7)
 
-- [ ] **RUN-01**: Documentation describes **local** execution: API via **`python api.py`** (or the documented equivalent) and the Streamlit app via **`streamlit run …`** — **Docker not required** for v1.1.
+- [x] **RUN-01**: Documentation describes **local** execution: API via **`python api.py`** (or the documented equivalent) and the Streamlit app via **`streamlit run …`** — **Docker not required** for v1.1.
 
 ## v1 Requirements (baseline — shipped v1.0)
 
@@ -98,12 +98,12 @@ Deferred to future release. Tracked but not in the current roadmap milestone.
 | GC-01 | Phase 6 | Complete |
 | GC-02 | Phase 6 | Complete |
 | GC-03 | Phase 6 | Complete |
-| UI-01 | Phase 7 | Pending |
-| UI-02 | Phase 7 | Pending |
-| UI-03 | Phase 7 | Pending |
-| RUN-01 | Phase 7 | Pending |
+| UI-01 | Phase 7 | Complete |
+| UI-02 | Phase 7 | Complete |
+| UI-03 | Phase 7 | Complete |
+| RUN-01 | Phase 7 | Complete |
 
-**Coverage (v1.1):** Phase 6 requirements complete; Phase 7 (UI + local run) pending.
+**Coverage (v1.1):** Phases 6–7 requirements complete.
 
 ---
-*Last updated: 2026-03-27 — v1.1 requirements added (GigaChat RAG, Streamlit, local run)*
+*Last updated: 2026-03-27 — Phase 7 complete; UI + RUN requirements verified*
