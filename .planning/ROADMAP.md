@@ -80,7 +80,10 @@ Plans:
   1. User receives live-enriched answers when retrieval context is insufficient and current data is required.
   2. User receives an explicit degraded-mode message when live API dependency is unavailable.
   3. Live-dependent answers include freshness metadata (`as_of`) visible in the response.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 05-01-PLAN.md — Live contracts, f1api.dev client (timeout, retries, breaker), deterministic live gate, unit tests.
+- [ ] 05-02-PLAN.md — `/next_message` live branches, app state injection, RU freshness + LIVE_UNAVAILABLE, integration tests.
 
 ## Progress
 
@@ -93,4 +96,4 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 | 2. Async Backend Contracts | 2/2 | Complete | 2026-03-27 |
 | 3. Historical RAG Grounding | 4/4 | Complete | 2026-03-27 |
 | 4. RU Q&A Answer Reliability | 2/2 | Complete | 2026-03-27 |
-| 5. Live Enrichment & Freshness | 0/TBD | Not started | - |
+| 5. Live Enrichment & Freshness | 0/2 | Not started | - |

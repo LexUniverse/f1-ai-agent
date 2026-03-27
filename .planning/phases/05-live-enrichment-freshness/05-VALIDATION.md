@@ -38,10 +38,13 @@ created: 2026-03-27
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 05-01-01 | 01 | 1 | LIVE-01 | unit | `python3 -m pytest tests/test_live_gate.py -x` | ❌ W0 | ⬜ pending |
-| 05-01-02 | 01 | 1 | LIVE-03 | unit | `python3 -m pytest tests/test_f1api_client.py -x` | ❌ W0 | ⬜ pending |
-| 05-02-01 | 02 | 1 | LIVE-01 | integration | `python3 -m pytest tests/test_live_enrichment.py::test_live_enriches_when_rag_empty -x` | ❌ W0 | ⬜ pending |
-| 05-02-02 | 02 | 1 | LIVE-02 | integration | `python3 -m pytest tests/test_live_enrichment.py::test_live_unavailable_degraded -x` | ❌ W0 | ⬜ pending |
+| 05-01-01 | 01 | 1 | LIVE-02, LIVE-03 | unit | `python3 -m pytest tests/test_live_gate.py -x` | ❌ W0 | ⬜ pending |
+| 05-01-02 | 01 | 1 | LIVE-02, LIVE-03 | unit | `python3 -m pytest tests/test_f1api_client.py -x` | ❌ W0 | ⬜ pending |
+| 05-02-01 | 02 | 2 | LIVE-01, LIVE-03 | unit | Task 1 verify: `python3 -c` imports `LIVE_UNAVAILABLE_MESSAGE_RU` + `live_fresh_user_message_ru` (see 05-02-PLAN Task 1) | ❌ W0 | ⬜ pending |
+| 05-02-02 | 02 | 2 | LIVE-01, LIVE-02, LIVE-03 | static | Task 2 verify: `python3 -c` pathlib asserts on `chat.py`/`main.py` + `from src.main import app` / `f1_api_client` (see 05-02-PLAN Task 2) | ❌ W0 | ⬜ pending |
+| 05-02-03 | 02 | 2 | LIVE-01, LIVE-02, LIVE-03 | integration | Task 3 verify: `python3 -m pytest tests/test_live_enrichment.py tests/test_qna_reliability.py tests/test_api_async_contracts.py -x` | ❌ W0 | ⬜ pending |
+
+*Aligned with plan frontmatter: Plan 01 = LIVE-02 + LIVE-03 foundations; Plan 02 = LIVE-01..03 end-to-end.*
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
