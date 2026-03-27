@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Header, Request
 from src.auth.dependencies import require_authorized_session
 from src.auth.errors import AUTH_UNAUTHORIZED, unauthorized_error
 from src.auth.service import AuthService
+from src.answer.russian_qna import build_structured_ru_answer, qna_confidence_from_evidence
 from src.models.api_contracts import MessageStatusResponse, NextMessageResponse, StartChatRequest, StartChatResponse
 from src.retrieval.alias_resolver import resolve_entities
 from src.retrieval.evidence import format_evidence
@@ -70,13 +71,18 @@ def next_message(request: Request, _session=Depends(_session_dependency)):
             item.used_in_answer = True
 
         if evidence:
-            message = f"Историческая сводка: {evidence[0].snippet}"
+            structured = build_structured_ru_answer(evidence)
+            conf = qna_confidence_from_evidence(evidence)
+            summary = evidence[0].snippet.strip()[:120]
+            message = f"Историческая сводка: {summary}. Уверенность: {conf.tier_ru}."
             status = "ready"
             details = {
                 "code": "OK",
                 "normalized_query": normalized_query,
                 "canonical_entity_ids": canonical_entity_ids,
                 "evidence": [item.model_dump() for item in evidence],
+                "structured_answer": structured.model_dump(),
+                "confidence": conf.model_dump(),
             }
         else:
             message = "Недостаточно исторических данных в базе f1db."
