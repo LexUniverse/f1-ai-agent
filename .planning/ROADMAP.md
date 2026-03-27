@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention. *(Completed: 2026-03-27)*
 - [x] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees. *(Completed: 2026-03-27)*
 - [x] **Phase 6: GigaChat Classic RAG** - Chunk-grounded Russian answers via GigaChat; `gigachat_rag.py` replaces `russian_qna.py`; template fallback on LLM outage. *(Completed: 2026-03-27)*
-- [ ] **Phase 7: Streamlit UI & Local Run** - Chat UI (`/start_chat`, status polling, `/next_message`); show message, confidence, citations, `details.live`; document `python api.py` + Streamlit (no Docker).
+- [x] **Phase 7: Streamlit UI & Local Run** - Chat UI (`/start_chat`, status polling, `/next_message`); show message, confidence, citations, `details.live`; document `python api.py` + Streamlit (no Docker). *(Completed: 2026-03-27)*
 
 ## Phase Details
 
@@ -109,7 +109,10 @@ Plans:
   2. App polls `/message_status` and then `/next_message` per the async lifecycle.
   3. UI shows `message`, confidence, citations, and `details.live` when returned.
   4. README (or equivalent) documents local run: `python api.py` and Streamlit — **no Docker** for v1.1.
-**Plans**: (to plan) — use `/gsd-plan-phase 7`
+**Plans**: 2 (07-01, 07-02)
+Plans:
+- [x] 07-01-PLAN.md — Start chat question, httpx client, Streamlit UI (UI-01..03).
+- [x] 07-02-PLAN.md — Root `api.py`, README local run, `.env.example` F1_API_BASE_URL (RUN-01).
 
 ## Progress
 
@@ -124,4 +127,4 @@ Phases execute in numeric order: … → 5 → **6** → **7**
 | 4. RU Q&A Answer Reliability | 2/2 | Complete | 2026-03-27 |
 | 5. Live Enrichment & Freshness | 2/2 | Complete | 2026-03-27 |
 | 6. GigaChat Classic RAG | 2/2 | Complete | 2026-03-27 |
-| 7. Streamlit UI & Local Run | 0/? | Not started | - |
+| 7. Streamlit UI & Local Run | 2/2 | Complete | 2026-03-27 |

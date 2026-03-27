@@ -30,10 +30,11 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ Russian `/next_message` responses expose structured QnA details, explicit confidence, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability)
 - ✓ Live enrichment after historical retrieval uses a deterministic gate, surfaces `LiveDetails` / `as_of` in responses, and returns a fixed Russian degraded message when f1api.dev is unavailable — validated in Phase 05 (live-enrichment-freshness)
 - ✓ GigaChat classic RAG on historical and live success paths with hybrid citations, deterministic confidence, and explicit template fallback + disclosure when the LLM fails — validated in Phase 06 (gigachat-classic-rag)
+- ✓ Streamlit operator UI (`/start_chat` with question, status polling, `/next_message`) showing message, confidence, citations, live and synthesis metadata; documented local **API + Streamlit** run (`python api.py`, `streamlit run streamlit_app.py`) without Docker — validated in Phase 07 (streamlit-ui-local-run)
 
 ### Active (v1.1)
 
-- [ ] User can run the stack **locally** via documented **API + Streamlit** commands (no Docker in v1.1).
+_None — v1.1 phases 6–7 complete; define the next milestone to add new active requirements._
 
 ### Out of Scope
 
@@ -81,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 — Phase 6 validated (GigaChat RAG + template fallback); Phase 7 (Streamlit) next*
+*Last updated: 2026-03-27 — Phase 7 validated; v1.1 (phases 6–7) complete for product surface and local run*
