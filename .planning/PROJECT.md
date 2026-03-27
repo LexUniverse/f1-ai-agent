@@ -14,6 +14,8 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 
 - ✓ Access is restricted by per-user code allowlist authentication — validated in Phase 01 (access-control)
 - ✓ Async API contracts are typed and deterministic for session bootstrap, status polling, and next-message flow — validated in Phase 02 (async-backend-contracts)
+- ✓ Historical answers are grounded in indexed f1db retrieval with traceable evidence — validated in Phase 03 (historical-rag-grounding)
+- ✓ Russian `/next_message` responses expose structured QnA details, explicit confidence, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability)
 
 ### Active
 
@@ -66,4 +68,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after Phase 02 completion*
+*Last updated: 2026-03-27 after Phase 04 completion*

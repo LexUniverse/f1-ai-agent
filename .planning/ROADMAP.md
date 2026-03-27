@@ -14,8 +14,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Access Control** - Restrict assistant usage to valid personal allowlist codes. *(Completed: 2026-03-27)*
 - [x] **Phase 2: Async Backend Contracts** - Provide stable async chat endpoints with strict schemas. *(Completed: 2026-03-27)*
-- [ ] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability.
-- [ ] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention.
+- [x] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability. *(Completed: 2026-03-27)*
+- [x] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention. *(Completed: 2026-03-27)*
 - [ ] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees.
 
 ## Phase Details
@@ -41,8 +41,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Invalid request payloads are rejected with explicit schema validation errors.
 **Plans**: 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Contract foundation: typed schemas, unified error envelope, and `/start_chat` bootstrap verification.
-- [ ] 02-02-PLAN.md — Async lifecycle completion: session-state mapping, polling-safe status, and `/next_message` flow contract.
+- [x] 02-01-PLAN.md — Contract foundation: typed schemas, unified error envelope, and `/start_chat` bootstrap verification.
+- [x] 02-02-PLAN.md — Async lifecycle completion: session-state mapping, polling-safe status, and `/next_message` flow contract.
 
 ### Phase 3: Historical RAG Grounding
 **Goal**: Historical F1 questions are answered from traceable retrieval over indexed f1db data.
@@ -69,8 +69,8 @@ Plans:
   3. User receives a clear abstention/degraded response instead of fabricated claims when supporting evidence is insufficient.
 **Plans**: 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — Typed RU QnA models, deterministic builder (`src/answer/russian_qna.py`), `/next_message` success `details` + confidence in `message`.
-- [ ] 04-02-PLAN.md — Pytest contract coverage for structured answers, citations order, and `RETRIEVAL_NO_EVIDENCE` abstention.
+- [x] 04-01-PLAN.md — Typed RU QnA models, deterministic builder (`src/answer/russian_qna.py`), `/next_message` success `details` + confidence in `message`.
+- [x] 04-02-PLAN.md — Pytest contract coverage for structured answers, citations order, and `RETRIEVAL_NO_EVIDENCE` abstention.
 
 ### Phase 5: Live Enrichment & Freshness
 **Goal**: Live data augments answers only when needed, with transparent freshness and outage behavior.
@@ -91,6 +91,6 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Access Control | 2/2 | Complete | 2026-03-27 |
 | 2. Async Backend Contracts | 2/2 | Complete | 2026-03-27 |
-| 3. Historical RAG Grounding | 0/2 | Not started | - |
-| 4. RU Q&A Answer Reliability | 0/2 | Not started | - |
+| 3. Historical RAG Grounding | 4/4 | Complete | 2026-03-27 |
+| 4. RU Q&A Answer Reliability | 2/2 | Complete | 2026-03-27 |
 | 5. Live Enrichment & Freshness | 0/TBD | Not started | - |
