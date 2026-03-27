@@ -39,7 +39,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Client can poll message processing state via the status endpoint and receive structured status output.
   3. Client can fetch the next assistant response via the next-message endpoint in the expected async flow.
   4. Invalid request payloads are rejected with explicit schema validation errors.
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Contract foundation: typed schemas, unified error envelope, and `/start_chat` bootstrap verification.
+- [ ] 02-02-PLAN.md — Async lifecycle completion: session-state mapping, polling-safe status, and `/next_message` flow contract.
 
 ### Phase 3: Historical RAG Grounding
 **Goal**: Historical F1 questions are answered from traceable retrieval over indexed f1db data.
