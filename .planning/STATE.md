@@ -1,80 +1,50 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Ready
-stopped_at: Phase 5 complete — v1.0 roadmap phases finished
-last_updated: "2026-03-27T18:45:00.000Z"
+milestone: v1.1
+milestone_name: product-surface-gigachat
+status: Ready to plan
+stopped_at: Milestone v1.1 scoped — Phase 6 GigaChat RAG + Phase 7 Streamlit
+last_updated: "2026-03-27T19:30:00.000Z"
 last_activity: 2026-03-27
 progress:
-  total_phases: 5
+  total_phases: 7
   completed_phases: 5
   total_plans: 12
   completed_plans: 12
-  percent: 100
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-03-27)
+See: `.planning/PROJECT.md` (v1.1 — GigaChat classic RAG, Streamlit, local run)
 
-**Core value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
-**Current focus:** v1.0 milestone — all five phases delivered (live enrichment complete)
+**Core value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.  
+**Current focus:** **Phase 6** — GigaChat classic RAG (priority)
 
 ## Current Position
 
-Phase: 5 (complete)
-Plan: 05-02 complete
-Status: Ready
-Last activity: 2026-03-27
+Phase: **6** (next)  
+Plan: Not planned yet  
+Status: Ready to plan  
+Last activity: 2026-03-27 — v1.1 requirements & roadmap updated
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] v1.1 not started (v1.0: 5/5 phases complete)
 
 ## Performance Metrics
 
-**Velocity:**
-
-- Total plans completed: 0
-- Average duration: 0 min
-- Total execution time: 0.0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: none
-- Trend: Stable
-
-*Updated after each plan completion*
-| Phase 03 P01 | 2 min | 2 tasks | 7 files |
-| Phase 03 P02 | 1 min | 2 tasks | 3 files |
-| Phase 03-historical-rag-grounding P03 | 2m | 2 tasks | 4 files |
-| Phase 03-historical-rag-grounding P04 | 10 min | 2 tasks | 3 files |
+*Metrics will update as v1.1 plans execute.*
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in `PROJECT.md` Key Decisions table.
-Recent decisions affecting current work:
+- **v1.1:** No Docker — local `python api.py` + Streamlit.
+- **v1.1:** Primary synthesis moves to `gigachat_rag.py`; template fallback on GigaChat outage.
+- **v1.1:** Streamlit must show message, confidence, citations, `details.live`.
 
-- [Init]: Requirement-driven roadmap with five phases aligned to AUTH, API, RAG, QNA, and LIVE categories.
-- [Init]: RAG-first behavior and explicit degraded-mode messaging preserved as roadmap constraints.
-- [Phase 03]: Kept retrieval historical-only with explicit f1db dataset scope in Plan 03-01.
-- [Phase 03]: Standardized resolver contract to return normalized query, canonical IDs, and entity tags.
-- [Phase 03]: Executed retrieval synchronously in /next_message to preserve deterministic contract behavior. — Phase 3 requires inline retrieval and contract determinism in endpoint flow.
-- [Phase 03]: Marked synthesized evidence records with used_in_answer=true to make answer provenance explicit. — RAG-03 requires traceable link from evidence records to synthesized response output.
-- [Phase 03-historical-rag-grounding]: Use SHA1 over dataset/table/source_id for deterministic chunk IDs.
-- [Phase 03-historical-rag-grounding]: Use Chroma upsert with deterministic IDs for idempotent historical indexing.
-- [Phase 03-historical-rag-grounding]: Composed Chroma metadata filters with  for dataset and canonical constraints.
-- [Phase 03-historical-rag-grounding]: Grounding verification now seeds real Chroma data instead of monkeypatched retriever output.
-- [Phase 03-historical-rag-grounding]: Composed Chroma metadata filters using an AND operator to combine dataset and canonical constraints.
+Recent decisions from v1.0 remain in `PROJECT.md` Key Decisions table.
 
 ### Pending Todos
 
@@ -88,6 +58,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-27
-Stopped at: Phase 5 verified and marked complete
-Resume file: `.planning/phases/05-live-enrichment-freshness/05-VERIFICATION.md`
+Last session: 2026-03-27  
+Stopped at: v1.1 milestone initialized from user-adjusted scope  
+Next step: `/gsd-plan-phase 6` (or `/gsd-discuss-phase 6`)

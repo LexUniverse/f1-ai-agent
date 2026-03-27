@@ -1,17 +1,37 @@
 # Requirements: F1 Assistant (GigaChat + LangGraph)
 
-**Defined:** 2026-03-26
+**Defined:** 2026-03-26  
 **Core Value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
-## v1 Requirements
+## v1.1 Requirements (milestone in progress)
 
-Requirements for initial release. Each maps to roadmap phases.
+Scoped 2026-03-27 — **local run only (no Docker)**; **Phase 6** classic RAG via GigaChat; **Phase 7** Streamlit.
+
+### GigaChat classic RAG (Phase 6)
+
+- [ ] **GC-01**: When historical retrieval returns evidence, the assistant generates the Russian answer with **GigaChat** using a prompt that includes **retrieved chunks** (retrieval → prompt → LLM → RU answer), preserving traceable citations in API `details`.
+- [ ] **GC-02**: When **GigaChat is unavailable or errors**, `/next_message` **falls back** to deterministic **template** synthesis (equivalent behavior to pre-6 template path) with explicit degraded signaling where appropriate — no silent substitution of fabricated facts.
+- [ ] **GC-03**: Primary LLM RAG implementation lives in **`src/answer/gigachat_rag.py`**; **`src/answer/russian_qna.py`** is removed or reduced to **shared helpers / template fallback only** (per implementation plan).
+
+### Streamlit UI (Phase 7)
+
+- [ ] **UI-01**: User provides **access_code** and **question**; client calls **`/start_chat`** and stores **`session_id`**.
+- [ ] **UI-02**: Client **polls `/message_status`** until a terminal state, then retrieves the assistant payload via **`/next_message`** consistent with the async contract.
+- [ ] **UI-03**: UI displays **`message`**, **confidence**, **citations** (sources), and **`details.live`** when present.
+
+### Local run (Phase 7)
+
+- [ ] **RUN-01**: Documentation describes **local** execution: API via **`python api.py`** (or the documented equivalent) and the Streamlit app via **`streamlit run …`** — **Docker not required** for v1.1.
+
+## v1 Requirements (baseline — shipped v1.0)
+
+Requirements for the initial backend milestone. Traceability references Phases 1–5.
 
 ### Q&A Core
 
-- [ ] **QNA-01**: User can ask Formula 1 questions in Russian and receive a structured answer.
-- [ ] **QNA-02**: User answer includes explicit confidence level and source citations.
-- [ ] **QNA-03**: User receives abstention/degraded response when evidence is insufficient.
+- [x] **QNA-01**: User can ask Formula 1 questions in Russian and receive a structured answer.
+- [x] **QNA-02**: User answer includes explicit confidence level and source citations.
+- [x] **QNA-03**: User receives abstention/degraded response when evidence is insufficient.
 
 ### Historical RAG
 
@@ -27,19 +47,19 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can access assistant only with a valid personal access code from allowlist.
-- [ ] **AUTH-02**: User with invalid code is denied access with explicit unauthorized message.
+- [x] **AUTH-01**: User can access assistant only with a valid personal access code from allowlist.
+- [x] **AUTH-02**: User with invalid code is denied access with an explicit unauthorized message.
 
 ### Backend/API
 
-- [ ] **API-01**: Client can start a session via async endpoint equivalent to `/start_chat`.
-- [ ] **API-02**: Client can poll status via async endpoint equivalent to `/message_status`.
-- [ ] **API-03**: Client can request next response via async endpoint equivalent to `/next_message`.
-- [ ] **API-04**: API validates structured input/output contracts via Pydantic models.
+- [x] **API-01**: Client can start a session via async endpoint equivalent to `/start_chat`.
+- [x] **API-02**: Client can poll status via async endpoint equivalent to `/message_status`.
+- [x] **API-03**: Client can request next response via async endpoint equivalent to `/next_message`.
+- [x] **API-04**: API validates structured input/output contracts via Pydantic models.
 
 ## v2 Requirements
 
-Deferred to future release. Tracked but not in current roadmap.
+Deferred to future release. Tracked but not in the current roadmap milestone.
 
 ### Product Extensions
 
@@ -50,23 +70,19 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ## Out of Scope
 
-Explicitly excluded in v1.
-
 | Feature | Reason |
 |---------|--------|
-| Voice-first assistant | Explicitly deferred by product owner to keep v1 focused on trust and accuracy |
-| Advanced personalization | Deferred until baseline quality and reliability are proven |
-| Full Docker production packaging | Deferred by scope decision for current v1 |
+| Voice-first assistant | Deferred by product owner |
+| Advanced personalization | Deferred until baseline quality is proven |
+| **Docker / Compose for v1.1** | **Milestone decision — v1.1 uses local API + Streamlit only** |
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QNA-01 | Phase 4 | Pending |
-| QNA-02 | Phase 4 | Pending |
-| QNA-03 | Phase 4 | Pending |
+| QNA-01 | Phase 4 | Complete |
+| QNA-02 | Phase 4 | Complete |
+| QNA-03 | Phase 4 | Complete |
 | RAG-01 | Phase 3 | Complete |
 | RAG-02 | Phase 3 | Complete |
 | RAG-03 | Phase 3 | Complete |
@@ -79,12 +95,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-02 | Phase 2 | Complete |
 | API-03 | Phase 2 | Complete |
 | API-04 | Phase 2 | Complete |
+| GC-01 | Phase 6 | Pending |
+| GC-02 | Phase 6 | Pending |
+| GC-03 | Phase 6 | Pending |
+| UI-01 | Phase 7 | Pending |
+| UI-02 | Phase 7 | Pending |
+| UI-03 | Phase 7 | Pending |
+| RUN-01 | Phase 7 | Pending |
 
-**Coverage:**
-- v1 requirements: 15 total
-- Mapped to phases: 15
-- Unmapped: 0 ✅
+**Coverage (v1.1):** 8 requirements mapped to Phases 6–7 — all pending until execution.
 
 ---
-*Requirements defined: 2026-03-26*
-*Last updated: 2026-03-27 after Phase 05 completion*
+*Last updated: 2026-03-27 — v1.1 requirements added (GigaChat RAG, Streamlit, local run)*

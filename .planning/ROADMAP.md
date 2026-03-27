@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap delivers a trust-first Formula 1 assistant in Russian by sequencing access control, API contracts, grounded retrieval, structured answer quality, and live-data reliability. Each phase maps to a coherent requirement group and defines observable outcomes that can be verified directly in the product.
+This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0 (Phases 1–5)** shipped: access control, API contracts, grounded retrieval, structured answer quality, and live-data reliability. **v1.1 (Phases 6–7)** adds **GigaChat classic RAG** (chunk-grounded generation + template fallback) and a **Streamlit** UI with **local run only** (no Docker).
 
 ## Phases
 
@@ -17,6 +17,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability. *(Completed: 2026-03-27)*
 - [x] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention. *(Completed: 2026-03-27)*
 - [x] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees. *(Completed: 2026-03-27)*
+- [ ] **Phase 6: GigaChat Classic RAG** - Chunk-grounded Russian answers via GigaChat; `gigachat_rag.py` replaces `russian_qna.py`; template fallback on LLM outage.
+- [ ] **Phase 7: Streamlit UI & Local Run** - Chat UI (`/start_chat`, status polling, `/next_message`); show message, confidence, citations, `details.live`; document `python api.py` + Streamlit (no Docker).
 
 ## Phase Details
 
@@ -85,10 +87,31 @@ Plans:
 - [x] 05-01-PLAN.md — Live contracts, f1api.dev client (timeout, retries, breaker), deterministic live gate, unit tests.
 - [x] 05-02-PLAN.md — `/next_message` live branches, app state injection, RU freshness + LIVE_UNAVAILABLE, integration tests.
 
+### Phase 6: GigaChat Classic RAG
+**Goal**: Russian answers are produced by **GigaChat** from prompts that include **retrieved chunks**, with **deterministic template fallback** when the LLM path fails.
+**Depends on**: Phase 5  
+**Requirements**: GC-01, GC-02, GC-03  
+**Success Criteria** (what must be TRUE):
+  1. With evidence, the model response is driven by GigaChat using chunk context from the existing retrieval pipeline.
+  2. GigaChat outage or error triggers a documented fallback path (template / legacy builder behavior) without silent hallucination.
+  3. Primary synthesis module is `gigachat_rag.py`; `russian_qna.py` is no longer the main path (removed or helper-only).
+**Plans**: (to plan) — use `/gsd-plan-phase 6`
+
+### Phase 7: Streamlit UI & Local Run
+**Goal**: Operators run **API + Streamlit locally** and use the async chat contract end-to-end with full visibility into structured fields.
+**Depends on**: Phase 6  
+**Requirements**: UI-01, UI-02, UI-03, RUN-01  
+**Success Criteria** (what must be TRUE):
+  1. User enters access code and question; app obtains and stores `session_id` from `/start_chat`.
+  2. App polls `/message_status` and then `/next_message` per the async lifecycle.
+  3. UI shows `message`, confidence, citations, and `details.live` when returned.
+  4. README (or equivalent) documents local run: `python api.py` and Streamlit — **no Docker** for v1.1.
+**Plans**: (to plan) — use `/gsd-plan-phase 7`
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
+Phases execute in numeric order: … → 5 → **6** → **7**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -97,3 +120,5 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 | 3. Historical RAG Grounding | 4/4 | Complete | 2026-03-27 |
 | 4. RU Q&A Answer Reliability | 2/2 | Complete | 2026-03-27 |
 | 5. Live Enrichment & Freshness | 2/2 | Complete | 2026-03-27 |
+| 6. GigaChat Classic RAG | 0/? | Not started | - |
+| 7. Streamlit UI & Local Run | 0/? | Not started | - |

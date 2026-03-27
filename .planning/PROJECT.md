@@ -8,6 +8,18 @@ Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know
 
 The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
+## Current Milestone: v1.1 Product surface & GigaChat RAG
+
+**Goal:** Layer **GigaChat-backed classic RAG** on the existing retrieval stack and ship a **Streamlit** chat UI, using **local run only** (no Docker for this milestone).
+
+**Target features:**
+
+- **Phase 6 (priority):** Retrieval (Phase 3 pipeline) → prompt with chunks → **GigaChat** generation → Russian answer; implement **`src/answer/gigachat_rag.py`** in place of **`russian_qna.py`** as the primary synthesis path; **template / deterministic fallback** when GigaChat is unavailable.
+- **Phase 7:** **Streamlit** UI — `access_code` + question → `/start_chat` → `session_id` → poll `/message_status` → `/next_message`; display **message**, **confidence**, **citations**, and **`details.live`** when present.
+- **Runbook:** Local dev documented as **`python api.py`** (or equivalent documented entry) **+ Streamlit** app; **no Docker** for v1.1.
+
+**Key context:** v1.0 validated API contracts, RAG, structured details, and live enrichment; v1.1 adds the LLM synthesis path and operator-facing UI without changing the async session model.
+
 ## Requirements
 
 ### Validated
@@ -18,10 +30,10 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ Russian `/next_message` responses expose structured QnA details, explicit confidence, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability)
 - ✓ Live enrichment after historical retrieval uses a deterministic gate, surfaces `LiveDetails` / `as_of` in responses, and returns a fixed Russian degraded message when f1api.dev is unavailable — validated in Phase 05 (live-enrichment-freshness)
 
-### Active
+### Active (v1.1)
 
-- [ ] User can ask F1 questions in Russian and get accurate, structured answers.
-- [ ] Service is deployable via Docker with working backend API and chat frontend.
+- [ ] User can ask F1 questions in Russian and receive **GigaChat-grounded** answers when retrieval returns evidence, with **template fallback** if the LLM path fails.
+- [ ] User can run the stack **locally** via documented **API + Streamlit** commands (no Docker in v1.1).
 
 ### Out of Scope
 
@@ -38,7 +50,7 @@ The target architecture is a multi-agent graph on LangGraph with a supervisor an
 - **Latency**: Typical response time up to 10 seconds for standard non-heavy requests.
 - **Language**: Russian user interaction with Russian+English handling for data grounding.
 - **Auth**: Access controlled via per-user code allowlist.
-- **Deployment**: Dockerized backend and frontend required for v1 delivery.
+- **Deployment (v1.1):** Local run only — API + Streamlit; Docker explicitly out of scope for this milestone.
 
 ## Key Decisions
 
@@ -48,6 +60,8 @@ The target architecture is a multi-agent graph on LangGraph with a supervisor an
 | Explicit degraded-mode message when live API fails | Prevent silent failures and overconfident hallucinations | `LIVE_UNAVAILABLE` + `LIVE_UNAVAILABLE_MESSAGE_RU` from Phase 05. |
 | Per-user code allowlist authentication for v1 | Lightweight access control with minimal implementation overhead | Delivered Phase 01; unchanged. |
 | RU-first UX with RU/EN support | Users are Russian-speaking while source data is primarily English | — Pending |
+| v1.1: GigaChat classic RAG + template fallback | LLM reads retrieved chunks; outages must not fabricate silently | Primary synthesis in `gigachat_rag.py` (replaces `russian_qna.py`); template path on GigaChat outage. |
+| v1.1: No Docker | User preference for v1.1 delivery | Local `python api.py` + Streamlit only; document in RUN-01. |
 
 ## Evolution
 
@@ -67,4 +81,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after Phase 05 completion*
+*Last updated: 2026-03-27 — milestone v1.1 scoped (GigaChat RAG + Streamlit, local run)*
