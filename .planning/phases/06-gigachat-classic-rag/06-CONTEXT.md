@@ -6,34 +6,35 @@
 <domain>
 ## Phase Boundary
 
-Replace **template-only** Russian synthesis on the **historical-evidence success path** with **GigaChat classic RAG**: retrieval chunks feed the model prompt; the response remains **Russian**, **grounded**, and **traceable** in API `details` (citations / evidence linkage preserved per GC-01). On **GigaChat outage or hard failure**, use **deterministic template** behavior (**no silent fabrication**, GC-02). **Primary implementation** lives in **`src/answer/gigachat_rag.py`**; **`russian_qna.py`** becomes **shared helpers and/or template-fallback only** (GC-03).
+Phase 6 replaces **primary answer synthesis** with **GigaChat classic RAG** on top of the **existing retrieval pipeline**: when there is **usable context** (historical **evidence** and/or **live summary** per routing), the model receives a **prompt that includes retrieved chunks** (and live facts when applicable) and returns a **Russian** answer while **preserving traceable citations** in API `details`. When **GigaChat fails or is unavailable**, `/next_message` uses **deterministic template synthesis** (legacy/`russian_qna` helpers) with **explicit fallback signaling** (machine-readable `details` **and** a **short fixed Russian** user-visible line). **`src/answer/gigachat_rag.py`** is the primary LLM module; **`russian_qna.py`** is reduced to **shared builders / template fallback only** (GC-03).
 
-This phase does **not** ship Streamlit (Phase 7) or change the async session contract. It does **not** replace Phase 5 **live** success behavior unless explicitly replanned.
+This phase does **not** deliver Streamlit (Phase 7) or change auth/async session contracts (Phase 2).
 
 </domain>
 
 <decisions>
 ## Implementation Decisions
 
-### Routing: historical vs live (scope with Phase 5)
-- **D-01:** **GigaChat applies only** when the **historical evidence branch** succeeds (`evidence` non-empty after formatting), replacing today’s `build_structured_ru_answer` + templated `message` for that branch.
-- **D-02:** The **live-enriched success path** (no historical evidence, live gate passed, upstream OK) stays **fully deterministic** — continue using existing `summarize_live_next_payload_ru`, `live_fresh_user_message_ru`, `build_live_structured_ru_answer`, `live_qna_confidence` — **no GigaChat** on that path for v1.1 unless a later phase explicitly changes it.
+### Routing & live path (GC-01, GC-02)
+- **D-01:** **Historical-first** retrieval and Phase 5 **live gate** behavior stay as today: resolve → retrieve → format evidence → branch (non-empty evidence vs empty vs live).
+- **D-02:** **GigaChat applies to both** (user choice **1B**): (a) **historical success** path when `evidence` is non-empty — prompt includes **chunks/evidence**; (b) **live-enriched success** path when historical evidence is empty but live fetch succeeds — prompt includes **`summarize_live_next_payload_ru`** (and related live context) **plus** whatever chunk grounding is allowed (may be minimal); **both** paths must still populate **`details.live`** when live data was used, per Phase 5.
+- **D-03:** **Template fallback** when GigaChat errors/unavailable: use **equivalent deterministic** builders from the `russian_qna` helper surface so **facts are not silently invented** (GC-02).
 
-### API / `details` shape (compatibility with Phase 4 & 7)
-- **D-03:** Preserve the existing **`structured_answer`** and **`confidence`** shapes in `details` on success (Pydantic types in `api_contracts`). The LLM path must **populate or map** into **`StructuredRUAnswer`** and **`QnAConfidence`** (validation, repair, or constrained decoding — planner/implementation discretion).
-- **D-04:** **`message`** stays a **short Russian** primary line for chat UIs; richer content remains in **`details`** (Phase 4 pattern).
+### API shape & LLM mapping (GC-01, GC-03)
+- **D-04:** **Preserve existing contract** (user choice **2A**): success responses keep **`structured_answer`** as **`StructuredRUAnswer`** and **`confidence`** as **`QnAConfidence`** (`src/models/api_contracts.py`). The **planner/implementation** maps or constrains GigaChat output into these types (parse/validate; repair or safe retry — **Claude’s discretion** on strategy).
+- **D-05:** **`message`** remains the **short primary Russian line** for chat UIs (Phase 4). For **GigaChat** paths, **`message`** is still concise; richer content lives in **`structured_answer`**.
 
-### GigaChat failure → template fallback (GC-02)
-- **D-05:** On **GigaChat error, timeout, or documented outage**, fall back to **current template synthesis** from shared helpers (equivalent factual behavior to pre–Phase 6 historical success: structured + confidence from evidence rules **without inventing facts**).
-- **D-06:** Expose **machine-readable** fallback metadata in `details` on that path (e.g. a dedicated key such as `synthesis` / `synthesis_source` with value indicating **`template_fallback`** and an optional **reason code**). **No requirement** for an extra user-visible Russian “fallback” sentence in `message` unless tests or Phase 7 UX need it (**Claude’s discretion**).
+### Fallback transparency (GC-02)
+- **D-06:** On **template fallback** after GigaChat failure (user choice **3B**): (a) set a **machine-readable** field in **`details`** (e.g. nested under `synthesis` / `model` — exact key names **Claude’s discretion**) recording **`route: "template_fallback"`** (or equivalent) and optionally **`gigachat_error_class`** for support; (b) include a **fixed short Russian phrase** in **`message`** (or tightly prescribed append) that **discloses** the answer was **not** produced by the LLM — wording is **implementation-defined once**, then **pytest-stable**.
 
-### Confidence with LLM (trust)
-- **D-07:** **Baseline confidence tiers** for the GigaChat success path remain **evidence-derived** (same family of logic as `qna_confidence_from_evidence`: scores from retrieval/evidence). The model may add **qualitative caveats** inside **`structured_answer`** sections if useful; it **must not** force a **higher** confidence tier than the evidence pipeline allows without a documented, tested rule.
+### Confidence (QNA alignment under LLM)
+- **D-07:** **Hybrid** (user choice **4C**): **`confidence.score` / `tier_ru`** remain **grounded in retrieval evidence** when evidence exists (same family as `qna_confidence_from_evidence`); **live-only** path may keep **`live_qna_confidence()`** or a **documented** variant — **Claude’s discretion** so long as tiers stay explainable. The model **must not** override numeric tier with self-reported “confidence” unless **capped** by evidence rules.
+- **D-08:** **Qualitative caveats** (model uncertainty, missing chunk coverage) may appear **only** inside **`structured_answer.sections`** (or equivalent section bodies), **not** as conflicting **`QnAConfidence`** values.
 
 ### Claude's Discretion
-- GigaChat client wiring (`gigachat` vs `langchain-gigachat`), timeouts, **single vs double** invoke before fallback, and exact **`details`** key names for D-06.
-- Prompt wording and whether system instructions are RU, EN, or bilingual (must not break RU user-facing output and citation rules).
-- Exact validation strategy for mapping messy LLM output into `StructuredRUAnswer`.
+- GigaChat **SDK** wiring, timeouts, **retry** count before fallback, prompt templates (RU/EN system mix), **JSON vs tool** extraction for structured mapping.
+- Exact **`details`** key names for synthesis metadata; exact **Russian** fallback disclosure string once tests lock it.
+- How much **historical chunk text** is injected on the **live** branch when evidence is empty (minimal vs expanded) within prompt budget.
 
 </decisions>
 
@@ -43,22 +44,24 @@ This phase does **not** ship Streamlit (Phase 7) or change the async session con
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Roadmap & requirements
-- `.planning/ROADMAP.md` — Phase 6 goal, success criteria, GC alignment.
-- `.planning/REQUIREMENTS.md` — **GC-01**, **GC-02**, **GC-03**.
-- `.planning/PROJECT.md` — v1.1 GigaChat RAG + template fallback; local run note (Phase 7 / RUN-01).
+- `.planning/ROADMAP.md` — Phase 6 goal, success criteria, GC synthesis ownership
+- `.planning/REQUIREMENTS.md` — **GC-01**, **GC-02**, **GC-03**
+- `.planning/PROJECT.md` — v1.1 GigaChat + template fallback, local run boundary
 
 ### Prior phase contracts
-- `.planning/phases/05-live-enrichment-freshness/05-CONTEXT.md` — live branch, `details.live`, `LIVE_UNAVAILABLE`, historical-first ordering.
-- `.planning/phases/04-ru-q-a-answer-reliability/04-CONTEXT.md` — `structured_answer`, `confidence`, `message` vs `details`, abstention `failed` + `RETRIEVAL_NO_EVIDENCE`.
-- `.planning/phases/03-historical-rag-grounding/03-CONTEXT.md` — retrieval/evidence traceability.
+- `.planning/phases/05-live-enrichment-freshness/05-CONTEXT.md` — live gate, `details.live`, `LIVE_UNAVAILABLE`, historical-first
+- `.planning/phases/04-ru-q-a-answer-reliability/04-CONTEXT.md` — `message` vs `details`, structured answer, `RETRIEVAL_NO_EVIDENCE` semantics
+- `.planning/phases/03-historical-rag-grounding/03-CONTEXT.md` — retrieval, evidence traceability
 
-### Stack / provider notes
-- `.planning/research/STACK.md` — GigaChat SDK and `langchain-gigachat` versions and roles.
+### Research / stack
+- `.planning/research/STACK.md` — `gigachat`, `langchain-gigachat` versions and integration notes
+- `.planning/research/SUMMARY.md` — stack rationale including GigaChat
 
 ### Implementation anchors
-- `src/api/chat.py` — `/next_message` orchestration; historical vs live branching.
-- `src/answer/russian_qna.py` — template builders and confidence helpers to retain or extract for fallback.
-- `src/models/api_contracts.py` — `StructuredRUAnswer`, `QnAConfidence`, `EvidenceItem`, `NextMessageResponse` / `details` patterns.
+- `src/api/chat.py` — `/next_message` orchestration; integration point for `gigachat_rag` vs fallback
+- `src/models/api_contracts.py` — `StructuredRUAnswer`, `QnAConfidence`, `EvidenceItem`, `LiveDetails`, `NextMessageResponse` shapes
+- `src/answer/russian_qna.py` — template/fallback helpers (`build_structured_ru_answer`, live builders, confidence helpers)
+- `src/retrieval/` — evidence formatting and retrieval (unchanged contract surface for Phase 6)
 
 </canonical_refs>
 
@@ -66,21 +69,24 @@ This phase does **not** ship Streamlit (Phase 7) or change the async session con
 ## Existing Code Insights
 
 ### Reusable Assets
-- **`next_message`** already resolves entities, retrieves, formats **`evidence`**, and builds success **`details`** with **`structured_answer`** and **`confidence`** on the historical path.
-- **`russian_qna.py`** provides **`build_structured_ru_answer`**, **`qna_confidence_from_evidence`**, and live helpers — fallback and shared formatting should reuse or thinly wrap these.
+- **`src/api/chat.py`**: branches **historical evidence** vs **`RETRIEVAL_NO_EVIDENCE`** vs **live success**; builds `details` with `evidence`, `structured_answer`, `confidence`, and `live` on live path.
+- **`src/answer/russian_qna.py`**: deterministic **`build_structured_ru_answer`**, **`qna_confidence_from_evidence`**, live **`build_live_structured_ru_answer`**, **`live_qna_confidence`**, **`summarize_live_next_payload_ru`** — intended to remain as **fallback/shared** after Phase 6.
+- **`src/models/api_contracts.py`**: typed **`StructuredRUAnswer`** / **`QnAConfidence`**; Phase 6 must **populate these from GigaChat** or template path consistently.
 
 ### Established Patterns
-- Contract-first **`details`** dict with **model_dump** for nested models; **`code: OK`** for successes; live vs historical provenance split from Phase 5.
+- **Synchronous** handling inside **`/next_message`**; **Pydantic** `model_dump()` into **`details`** dict.
+- **Phase 5**: **`details.code == "OK"`** for successes; consumers detect live via **`"live" in details`**.
 
 ### Integration Points
-- New **`gigachat_rag.py`** should be called from **`chat.py`** only on **non-empty evidence** success routing, before assembling the response; fallback closes back to template helpers on failure.
+- New **`src/answer/gigachat_rag.py`**: **primary** call for **both** historical and (per D-02) **live success** synthesis; **`chat.py`** chooses LLM vs fallback based on GigaChat outcome.
+- **Credentials**: GigaChat auth via **environment / secrets** — no keys in repo (**Claude’s discretion** for exact env names; document in plan).
 
 </code_context>
 
 <specifics>
 ## Specific Ideas
 
-User selected **all four** discuss-phase gray areas; decisions **D-01–D-07** match the **recommended defaults** articulated in the same session (deterministic live path; preserve `details` schema; machine-readable fallback signaling; evidence-grounded confidence). Adjust in planning if product intent changes.
+User selections from discuss-phase: **1B** (GigaChat on live path too), **2A** (strict schema mapping), **3B** (`details` flag + fixed RU disclosure on fallback), **4C** (hybrid confidence: evidence-grounded tiers, caveats in sections only).
 
 </specifics>
 

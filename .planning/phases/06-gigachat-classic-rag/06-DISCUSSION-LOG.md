@@ -5,83 +5,63 @@
 
 **Date:** 2026-03-27
 **Phase:** 6-GigaChat Classic RAG
-**Areas discussed:** Live branch vs GigaChat, `details` shape with LLM, template fallback transparency, confidence source
+**Areas discussed:** Live branch vs GigaChat; `details` shape with LLM; Template fallback transparency; Confidence with GigaChat
 
 ---
 
-## Area selection
+## Live branch vs GigaChat
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Discuss area 1 only | Live branch routing | |
-| Discuss area 2 only | Preserve schema vs message-primary | |
-| Discuss area 3 only | Fallback signaling | |
-| Discuss area 4 only | Confidence source | |
-| Discuss all four | Full session | ✓ |
+| A | Live-enriched success stays **deterministic only** (no GigaChat on live path). | |
+| B | **Also** call GigaChat on live success — prompt includes live summary (and optional chunk context). | ✓ |
 
-**User's choice:** `all` — all four gray areas selected.
-
-**Notes:** Assistant had pre-annotated recommended defaults in the prior turn; user did not request deviations.
+**User's choice:** B  
+**Notes:** Aligns historical and live success behind one synthesis voice; implementation must preserve `details.live` and Phase 5 freshness semantics.
 
 ---
 
-## 1. Live branch vs GigaChat
+## `details` shape (LLM primary)
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| A | Keep **live success path fully deterministic** (no GigaChat); GigaChat only when historical `evidence` is non-empty | ✓ |
-| B | Run **GigaChat** on live success as well (single “LLM voice”) | |
+| A | **Preserve** `StructuredRUAnswer` + `QnAConfidence` strictly (parse/validate model output). | ✓ |
+| B | `message`-primary; thinner structured fields if citations traceable. | |
 
-**User's choice:** A (recommended default, confirmed implicitly by proceeding without objection after selecting all areas for discussion)
-
-**Notes:** Aligns with Phase 5 contracts and avoids coupling fresh live data to model variability in v1.1.
+**User's choice:** A  
+**Notes:** Keeps Phase 4/7 contract stability; planner defines parsing/repair strategy.
 
 ---
 
-## 2. `details` shape when LLM is primary
+## Template fallback transparency
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| A | **Preserve** `structured_answer` + `confidence` schema; map/validate LLM output into existing types | ✓ |
-| B | **`message`-primary** narrative; minimal `details` as long as citations stay traceable | |
+| A | Machine-readable flag in `details` only. | |
+| B | Machine-readable flag **plus** short **fixed Russian** user-visible line. | ✓ |
+| C | No extra signaling beyond current template behavior. | |
 
-**User's choice:** A (recommended default)
-
-**Notes:** Keeps Phase 7 / Streamlit and contract tests stable.
+**User's choice:** B  
+**Notes:** Satisfies explicit degraded signaling “where appropriate” for GC-02; string must be test-stable once chosen.
 
 ---
 
-## 3. Template fallback transparency (GC-02)
+## Confidence with GigaChat
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| A | **Machine-readable** flag/metadata in `details` only | ✓ |
-| B | A + **explicit Russian line** in `message` that synthesis used fallback | |
-| C | **No extra signal** — indistinguishable OK payload aside from content | |
+| A | Evidence-derived only. | |
+| B | Model drives tier/score. | |
+| C | **Hybrid** — evidence grounds/caps tier; model caveats only in `structured_answer` sections. | ✓ |
 
-**User's choice:** A (recommended default; optional RU line left to Claude’s discretion in CONTEXT)
-
-**Notes:** satisfies “documented fallback path” / explicit degraded signaling where appropriate without noisy UX.
-
----
-
-## 4. Confidence when using GigaChat
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| A | **Evidence-derived** tiers only (same philosophy as `qna_confidence_from_evidence`) | |
-| B | **Model self-reported** confidence | |
-| C | **Hybrid** — evidence baseline with optional caveats in structured sections | ✓ |
-
-**User's choice:** C — evidence-derived baseline tier (**D-07**) plus optional qualitative caveats inside `structured_answer`; no higher tier without a tested rule.
-
-**Notes:** Merges trust posture of Phase 4 with LLM nuance.
+**User's choice:** C  
+**Notes:** Avoids overconfident LLM numeric tiers while allowing nuance in prose sections.
 
 ---
 
 ## Claude's Discretion
 
-As captured in **06-CONTEXT.md**: client library choice, retries/timeouts, exact `details` key names for synthesis metadata, prompt language, and parsing/validation strategy for structured output.
+Exact `details` keys for synthesis metadata; GigaChat timeouts/retries; prompt design; fallback RU disclosure wording; chunk depth on live-only prompts.
 
 ## Deferred Ideas
 
