@@ -2,23 +2,24 @@
 
 ## What This Is
 
-Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know recent seasons but want to learn the full history and context. The system combines RAG over historical F1 data with live API lookups when needed, then returns structured, reliable answers in chat. Primary interaction language is Russian, with bilingual RU/EN support for source grounding and responses.
+Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know recent seasons but want to learn the full history and context. The system combines **RAG over historical F1 data** with **web search (Tavily via LangChain)** when retrieval is insufficient, orchestrated by a **LangGraph supervisor with GigaChat at the core**, then returns structured, reliable answers in chat. Primary interaction language is Russian, with bilingual RU/EN support for source grounding and responses.
 
 ## Core Value
 
 The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
-## Current Milestone: v1.1 Product surface & GigaChat RAG
+## Current Milestone: v1.2 GigaChat supervisor — RAG sufficiency → Tavily (remove F1 API)
 
-**Goal:** Layer **GigaChat-backed classic RAG** on the existing retrieval stack and ship a **Streamlit** chat UI, using **local run only** (no Docker for this milestone).
+**Goal:** Replace the **f1api.dev** live branch with **LangGraph-orchestrated** flows: **GigaChat** supervises **RAG** and, when evidence is **empty or insufficient**, uses **LangChain + Tavily Search** (LLM-authored query → results → synthesis). Ship **operator documentation** (`README`) for setup, run, and **all `.env` keys with acquisition links**, plus **tests that validate GigaChat and configured API keys** (smoke/integration pattern).
 
 **Target features:**
 
-- **Phase 6 (priority):** Retrieval (Phase 3 pipeline) → prompt with chunks → **GigaChat** generation → Russian answer; implement **`src/answer/gigachat_rag.py`** in place of **`russian_qna.py`** as the primary synthesis path; **template / deterministic fallback** when GigaChat is unavailable.
-- **Phase 7:** **Streamlit** UI — `access_code` + question → `/start_chat` → `session_id` → poll `/message_status` → `/next_message`; display **message**, **confidence**, **citations**, and **`details.live`** when present.
-- **Runbook:** Local dev documented as **`python api.py`** (or equivalent documented entry) **+ Streamlit** app; **no Docker** for v1.1.
+- **Supervisor graph:** LangGraph with **GigaChat**-centric routing; **RAG node** + **tool node** (Tavily); parallel fan-out where beneficial.
+- **Sufficiency:** Explicit evaluation after retrieval (scores and/or LLM judge) before spending Tavily budget.
+- **Tavily path:** No dedicated F1 REST client in the answer pipeline; web results feed structured RU answers with **attributed URLs**.
+- **Docs & quality:** Full **README** (deploy locally, run API + Streamlit, `.env` catalog); **pytest** coverage for **live key smoke** (opt-in marker) and GigaChat ping.
 
-**Key context:** v1.0 validated API contracts, RAG, structured details, and live enrichment; v1.1 adds the LLM synthesis path and operator-facing UI without changing the async session model.
+**Key context:** v1.1 delivered GigaChat RAG + Streamlit + local runbook; v1.2 is an **architecture shift** for freshness and gaps while keeping async session contracts and Russian structured responses.
 
 ## Requirements
 
@@ -32,9 +33,12 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ GigaChat classic RAG on historical and live success paths with hybrid citations, deterministic confidence, and explicit template fallback + disclosure when the LLM fails — validated in Phase 06 (gigachat-classic-rag)
 - ✓ Streamlit operator UI (`/start_chat` with question, status polling, `/next_message`) showing message, confidence, citations, live and synthesis metadata; documented local **API + Streamlit** run (`python api.py`, `streamlit run streamlit_app.py`) without Docker — validated in Phase 07 (streamlit-ui-local-run)
 
-### Active (v1.1)
+### Active (v1.2)
 
-_None — v1.1 phases 6–7 complete; define the next milestone to add new active requirements._
+- LangGraph **supervisor** with **RAG** and **Tavily (LangChain)** branches; **GigaChat** for routing, query formulation, and synthesis.
+- **RAG sufficiency** gate before web search; remove **f1api.dev** from the answer path.
+- **README:** setup, run, **`.env` variables** and where to obtain keys (GigaChat, Tavily, etc.).
+- **Tests:** smoke/integration checks that **GigaChat** and **required `.env` keys** work when enabled.
 
 ### Out of Scope
 
@@ -43,7 +47,7 @@ _None — v1.1 phases 6–7 complete; define the next milestone to add new activ
 
 ## Context
 
-The target architecture is a multi-agent graph on LangGraph with a supervisor and delegated nodes (planner, rag, llm, tool_call, evaluator). Backend is FastAPI with async endpoints and Pydantic models for structured JSON validation. Frontend is Streamlit chat. Historical data comes from f1db loaded into ChromaDB for retrieval. Live updates come from f1api.dev and should be used conditionally when RAG context is insufficient.
+The target architecture is a **LangGraph** supervisor with delegated nodes (**RAG**, **tool/Tavily**, **synthesis**). Backend is FastAPI with async endpoints and Pydantic models for structured JSON validation. Frontend is Streamlit chat. Historical data comes from f1db loaded into ChromaDB for retrieval. When RAG context is insufficient, **Tavily web search** (via LangChain) supplies external evidence instead of a dedicated Formula 1 REST API.
 
 ## Constraints
 
@@ -51,18 +55,19 @@ The target architecture is a multi-agent graph on LangGraph with a supervisor an
 - **Latency**: Typical response time up to 10 seconds for standard non-heavy requests.
 - **Language**: Russian user interaction with Russian+English handling for data grounding.
 - **Auth**: Access controlled via per-user code allowlist.
-- **Deployment (v1.1):** Local run only — API + Streamlit; Docker explicitly out of scope for this milestone.
+- **Deployment (v1.2):** Local run — API + Streamlit; Docker not a milestone goal unless scoped later.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| RAG-first, API-second response policy | Reduces external dependency and stabilizes response quality | Enforced in `/next_message` after Phase 05 (retrieve → evidence → live branch only when empty + gate). |
-| Explicit degraded-mode message when live API fails | Prevent silent failures and overconfident hallucinations | `LIVE_UNAVAILABLE` + `LIVE_UNAVAILABLE_MESSAGE_RU` from Phase 05. |
+| RAG-first, web-second response policy (v1.2) | Stabilize quality; Tavily only when RAG insufficient | Replace f1api live branch with LangGraph gate + Tavily tool. |
+| Explicit degraded-mode when web search fails | Prevent silent failures | Reuse pattern from Phase 05; message/RU copy updated for Tavily timeouts. |
 | Per-user code allowlist authentication for v1 | Lightweight access control with minimal implementation overhead | Delivered Phase 01; unchanged. |
 | RU-first UX with RU/EN support | Users are Russian-speaking while source data is primarily English | — Pending |
 | v1.1: GigaChat classic RAG + template fallback | LLM reads retrieved chunks; outages must not fabricate silently | Primary synthesis in `gigachat_rag.py` (replaces `russian_qna.py`); template path on GigaChat outage. |
-| v1.1: No Docker | User preference for v1.1 delivery | Local `python api.py` + Streamlit only; document in RUN-01. |
+| v1.1: No Docker | User—v1.1 delivery | Shipped RUN-01. |
+| v1.2: Tavily + LangGraph supervisor | User request; remove F1 REST dependency | GigaChat core; LangChain Tavily tool; README + env tests. |
 
 ## Evolution
 
@@ -82,4 +87,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 — Phase 7 validated; v1.1 (phases 6–7) complete for product surface and local run*
+*Last updated: 2026-03-27 — Milestone v1.2 started: supervisor + Tavily + README + integration smokes*
