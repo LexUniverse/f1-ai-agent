@@ -28,3 +28,10 @@ def reset_state():
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+def assert_error_envelope(payload: dict, code: str):
+    assert "error" in payload
+    assert payload["error"]["code"] == code
+    assert "message" in payload["error"]
+    assert "details" in payload["error"]

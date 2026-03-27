@@ -4,6 +4,7 @@ from src.auth.allowlist import parse_allowlist
 from src.auth.limiter import COOLDOWN_SECONDS, MAX_FAILURES
 from src.auth.service import AuthService
 from src.api.chat import PROCESS_CALLS
+from conftest import assert_error_envelope
 
 
 def test_allowlist_parsing_and_validation(monkeypatch):
@@ -47,15 +48,15 @@ def test_start_chat_valid_code_authorizes(client):
 def test_start_chat_invalid_code_rejected(client):
     response = client.post("/start_chat", json={"access_code": "BAD"})
     assert response.status_code == 401
-    detail = response.json()["detail"]
-    assert detail["code"] == "AUTH_INVALID_CODE"
-    assert "Неверный код" in detail["message"]
+    body = response.json()
+    assert_error_envelope(body, "AUTH_INVALID_CODE")
+    assert "Неверный код" in body["error"]["message"]
 
 
 def test_start_chat_authorization_flow(client):
     missing = client.post("/start_chat", json={})
     assert missing.status_code == 401
-    assert missing.json()["detail"]["code"] == "AUTH_MISSING_CODE"
+    assert_error_envelope(missing.json(), "AUTH_MISSING_CODE")
 
     valid = client.post("/start_chat", json={"access_code": "XYZ789"})
     assert valid.status_code == 200
@@ -67,13 +68,13 @@ def test_start_chat_authorization_flow(client):
 def test_unauthorized_blocked_before_processing(client):
     PROCESS_CALLS["count"] = 0
     response = client.get("/message_status", headers={"X-Session-Id": "missing-session"})
-    assert response.status_code == 401
-    assert response.json()["detail"]["code"] == "AUTH_UNAUTHORIZED"
+    assert response.status_code == 404
+    assert_error_envelope(response.json(), "SESSION_NOT_FOUND")
     assert PROCESS_CALLS["count"] == 0
 
 
 def test_unauthorized_blocked_before_chat_pipeline(client):
     PROCESS_CALLS["count"] = 0
     response = client.post("/next_message", headers={"X-Session-Id": "bad"}, json={})
-    assert response.status_code == 401
+    assert response.status_code == 404
     assert PROCESS_CALLS["count"] == 0
