@@ -2,7 +2,7 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: GigaChat supervisor — RAG → Tavily
-status: defining_requirements
+status: roadmap_ready
 stopped_at: —
 last_updated: "2026-03-27T12:00:00.000Z"
 last_activity: 2026-03-27
@@ -24,12 +24,12 @@ See: `.planning/PROJECT.md` (v1.2 — supervisor, Tavily, README, integration te
 
 ## Current Position
 
-Phase: Not started (defining requirements)  
+Phase: **8** (not started — planning)  
 Plan: —  
-Status: Defining requirements  
-Last activity: 2026-03-27 — Milestone v1.2 started (research + roadmap pending execution)
+Status: Roadmap ready — discuss or plan phase 8  
+Last activity: 2026-03-27 — v1.2 requirements + roadmap (phases 8–10) committed
 
-Progress: Phases 1–7 complete historically; phases 8–10 planned for v1.2.
+Progress: Phases 1–7 complete; v1.2 execution begins at phase 8.
 
 ## Performance Metrics
 
