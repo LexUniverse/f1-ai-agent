@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Async Backend Contracts** - Provide stable async chat endpoints with strict schemas. *(Completed: 2026-03-27)*
 - [x] **Phase 3: Historical RAG Grounding** - Ground responses in f1db with multilingual entity matching and traceability. *(Completed: 2026-03-27)*
 - [x] **Phase 4: RU Q&A Answer Reliability** - Produce structured Russian answers with confidence, citations, and abstention. *(Completed: 2026-03-27)*
-- [ ] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees.
+- [x] **Phase 5: Live Enrichment & Freshness** - Add conditional live API enrichment with degraded-mode and freshness guarantees. *(Completed: 2026-03-27)*
 
 ## Phase Details
 
@@ -82,8 +82,8 @@ Plans:
   3. Live-dependent answers include freshness metadata (`as_of`) visible in the response.
 **Plans**: 2 plans
 Plans:
-- [ ] 05-01-PLAN.md — Live contracts, f1api.dev client (timeout, retries, breaker), deterministic live gate, unit tests.
-- [ ] 05-02-PLAN.md — `/next_message` live branches, app state injection, RU freshness + LIVE_UNAVAILABLE, integration tests.
+- [x] 05-01-PLAN.md — Live contracts, f1api.dev client (timeout, retries, breaker), deterministic live gate, unit tests.
+- [x] 05-02-PLAN.md — `/next_message` live branches, app state injection, RU freshness + LIVE_UNAVAILABLE, integration tests.
 
 ## Progress
 
@@ -96,4 +96,4 @@ Phases execute in numeric order: 1 -> 2 -> 2.1 -> 2.2 -> 3 -> 3.1 -> 4 -> 5
 | 2. Async Backend Contracts | 2/2 | Complete | 2026-03-27 |
 | 3. Historical RAG Grounding | 4/4 | Complete | 2026-03-27 |
 | 4. RU Q&A Answer Reliability | 2/2 | Complete | 2026-03-27 |
-| 5. Live Enrichment & Freshness | 0/2 | Not started | - |
+| 5. Live Enrichment & Freshness | 2/2 | Complete | 2026-03-27 |

@@ -3,8 +3,18 @@ from fastapi import APIRouter, Depends, Header, Request
 from src.auth.dependencies import require_authorized_session
 from src.auth.errors import AUTH_UNAUTHORIZED, unauthorized_error
 from src.auth.service import AuthService
-from src.answer.russian_qna import build_structured_ru_answer, qna_confidence_from_evidence
-from src.models.api_contracts import MessageStatusResponse, NextMessageResponse, StartChatRequest, StartChatResponse
+from src.answer.russian_qna import (
+    build_live_structured_ru_answer,
+    build_structured_ru_answer,
+    live_fresh_user_message_ru,
+    live_qna_confidence,
+    qna_confidence_from_evidence,
+    summarize_live_next_payload_ru,
+)
+from src.integrations.f1api_client import LiveUpstreamError
+from src.live.gate import requires_live_data
+from src.live.messages_ru import LIVE_UNAVAILABLE_MESSAGE_RU
+from src.models.api_contracts import LiveDetails, MessageStatusResponse, NextMessageResponse, StartChatRequest, StartChatResponse
 from src.retrieval.alias_resolver import resolve_entities
 from src.retrieval.evidence import format_evidence
 from src.retrieval.retriever import retrieve_historical_context
@@ -84,10 +94,34 @@ def next_message(request: Request, _session=Depends(_session_dependency)):
                 "structured_answer": structured.model_dump(),
                 "confidence": conf.model_dump(),
             }
-        else:
+        elif not requires_live_data(normalized_query=normalized_query, raw_user_text=_session.next_message):
             message = "Недостаточно исторических данных в базе f1db."
             status = "failed"
             details = {"code": "RETRIEVAL_NO_EVIDENCE", "evidence": []}
+        else:
+            try:
+                live_payload, as_of = request.app.state.f1_api_client.fetch_current_next()
+            except LiveUpstreamError:
+                store.set_status(_session.session_id, "failed", "LIVE_UNAVAILABLE")
+                return NextMessageResponse(
+                    message=LIVE_UNAVAILABLE_MESSAGE_RU,
+                    status="failed",
+                    details={"code": "LIVE_UNAVAILABLE", "evidence": []},
+                )
+            summarized = summarize_live_next_payload_ru(live_payload)
+            message = live_fresh_user_message_ru(as_of_utc_z=as_of, summary_ru=summarized)
+            structured = build_live_structured_ru_answer(summary_ru=summarized)
+            conf = live_qna_confidence()
+            status = "ready"
+            details = {
+                "code": "OK",
+                "normalized_query": normalized_query,
+                "canonical_entity_ids": canonical_entity_ids,
+                "evidence": [],
+                "live": LiveDetails(as_of=as_of, provider="f1api.dev", endpoint_key="current_next").model_dump(),
+                "structured_answer": structured.model_dump(),
+                "confidence": conf.model_dump(),
+            }
 
         store.set_status(_session.session_id, status, details["code"] if status == "failed" else None)
         return NextMessageResponse(message=message, status=status, details=details)

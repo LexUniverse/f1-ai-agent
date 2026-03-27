@@ -1,4 +1,6 @@
-from src.models.api_contracts import EvidenceItem, QnAConfidence, StructuredRUAnswer, AnswerSection
+import json
+
+from src.models.api_contracts import AnswerSection, EvidenceItem, QnAConfidence, StructuredRUAnswer
 
 CONFIDENCE_HIGH_MIN = 0.65
 CONFIDENCE_MEDIUM_MIN = 0.40
@@ -39,3 +41,40 @@ def qna_confidence_from_evidence(evidence: list[EvidenceItem]) -> QnAConfidence:
         return QnAConfidence(tier_ru=tier_ru_from_max_score(0.0), score=0.0)
     max_score = max(item.rank_score for item in evidence)
     return QnAConfidence(tier_ru=tier_ru_from_max_score(max_score), score=max_score)
+
+
+def summarize_live_next_payload_ru(payload: dict) -> str:
+    parts: list[str] = []
+    if "raceName" in payload:
+        parts.append(str(payload["raceName"]))
+    circuit = payload.get("Circuit") if isinstance(payload.get("Circuit"), dict) else None
+    if circuit is None and isinstance(payload.get("circuit"), dict):
+        circuit = payload["circuit"]
+    if isinstance(circuit, dict):
+        loc = circuit.get("Location") if isinstance(circuit.get("Location"), dict) else circuit.get("location")
+        if isinstance(loc, dict) and loc.get("locality"):
+            parts.append(str(loc["locality"]))
+        elif circuit.get("circuitName"):
+            parts.append(str(circuit["circuitName"]))
+    if parts:
+        return "Следующая гонка: " + ", ".join(parts)
+    return json.dumps(payload, ensure_ascii=False)[:200] + "…"
+
+
+def live_fresh_user_message_ru(*, as_of_utc_z: str, summary_ru: str) -> str:
+    summary_part = _truncate(summary_ru, 160)
+    return f"Актуально на {as_of_utc_z} — {summary_part}"
+
+
+def build_live_structured_ru_answer(*, summary_ru: str, citation_label: str = "live:f1api.dev") -> StructuredRUAnswer:
+    snip = _truncate(summary_ru, 80)
+    sources_block_ru = f"Источники:\n[1] {citation_label} — {snip}"
+    return StructuredRUAnswer(
+        sections=[AnswerSection(heading="Актуальные данные", body=summary_ru)],
+        sources_block_ru=sources_block_ru,
+        citation_count=1,
+    )
+
+
+def live_qna_confidence() -> QnAConfidence:
+    return QnAConfidence(tier_ru="средняя", score=0.55)

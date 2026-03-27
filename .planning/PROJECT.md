@@ -16,12 +16,11 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ Async API contracts are typed and deterministic for session bootstrap, status polling, and next-message flow — validated in Phase 02 (async-backend-contracts)
 - ✓ Historical answers are grounded in indexed f1db retrieval with traceable evidence — validated in Phase 03 (historical-rag-grounding)
 - ✓ Russian `/next_message` responses expose structured QnA details, explicit confidence, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability)
+- ✓ Live enrichment after historical retrieval uses a deterministic gate, surfaces `LiveDetails` / `as_of` in responses, and returns a fixed Russian degraded message when f1api.dev is unavailable — validated in Phase 05 (live-enrichment-freshness)
 
 ### Active
 
 - [ ] User can ask F1 questions in Russian and get accurate, structured answers.
-- [ ] System uses RAG first and calls live F1 API only when required information is missing.
-- [ ] If live API is unavailable, system explicitly reports degraded mode and uncertainty.
 - [ ] Service is deployable via Docker with working backend API and chat frontend.
 
 ### Out of Scope
@@ -45,9 +44,9 @@ The target architecture is a multi-agent graph on LangGraph with a supervisor an
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| RAG-first, API-second response policy | Reduces external dependency and stabilizes response quality | — Pending |
-| Explicit degraded-mode message when live API fails | Prevent silent failures and overconfident hallucinations | — Pending |
-| Per-user code allowlist authentication for v1 | Lightweight access control with minimal implementation overhead | — Pending |
+| RAG-first, API-second response policy | Reduces external dependency and stabilizes response quality | Enforced in `/next_message` after Phase 05 (retrieve → evidence → live branch only when empty + gate). |
+| Explicit degraded-mode message when live API fails | Prevent silent failures and overconfident hallucinations | `LIVE_UNAVAILABLE` + `LIVE_UNAVAILABLE_MESSAGE_RU` from Phase 05. |
+| Per-user code allowlist authentication for v1 | Lightweight access control with minimal implementation overhead | Delivered Phase 01; unchanged. |
 | RU-first UX with RU/EN support | Users are Russian-speaking while source data is primarily English | — Pending |
 
 ## Evolution
@@ -68,4 +67,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after Phase 04 completion*
+*Last updated: 2026-03-27 after Phase 05 completion*

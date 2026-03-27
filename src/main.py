@@ -4,12 +4,14 @@ from fastapi.responses import JSONResponse
 
 from src.api.chat import router as chat_router
 from src.auth.service import AuthService
+from src.integrations.f1api_client import F1ApiClient
 from src.models.api_contracts import ErrorEnvelope, ErrorEnvelopeBody
 from src.sessions.store import SessionStore
 
 app = FastAPI(title="F1 Assistant API")
 app.state.session_store = SessionStore()
 app.state.auth_service = AuthService()
+app.state.f1_api_client = F1ApiClient.from_env()
 app.include_router(chat_router)
 
 

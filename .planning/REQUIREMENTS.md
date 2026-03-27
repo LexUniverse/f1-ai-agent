@@ -21,9 +21,9 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Live API + Reliability
 
-- [ ] **LIVE-01**: User receives live-enriched answer when RAG context is insufficient and live data is required.
-- [ ] **LIVE-02**: User receives clear degraded-mode message when live API is unavailable.
-- [ ] **LIVE-03**: User answer includes freshness metadata (`as_of`) for live-dependent responses.
+- [x] **LIVE-01**: User receives live-enriched answer when RAG context is insufficient and live data is required.
+- [x] **LIVE-02**: User receives clear degraded-mode message when live API is unavailable.
+- [x] **LIVE-03**: User answer includes freshness metadata (`as_of`) for live-dependent responses.
 
 ### Authentication
 
@@ -70,9 +70,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RAG-01 | Phase 3 | Complete |
 | RAG-02 | Phase 3 | Complete |
 | RAG-03 | Phase 3 | Complete |
-| LIVE-01 | Phase 5 | Pending |
-| LIVE-02 | Phase 5 | Pending |
-| LIVE-03 | Phase 5 | Pending |
+| LIVE-01 | Phase 5 | Complete |
+| LIVE-02 | Phase 5 | Complete |
+| LIVE-03 | Phase 5 | Complete |
 | AUTH-01 | Phase 1 | Complete |
 | AUTH-02 | Phase 1 | Complete |
 | API-01 | Phase 2 | Complete |
@@ -87,4 +87,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-26*
-*Last updated: 2026-03-26 after roadmap traceability mapping*
+*Last updated: 2026-03-27 after Phase 05 completion*

@@ -64,3 +64,9 @@ class RetrievalArtifacts(BaseModel):
     normalized_query: str
     canonical_entity_ids: list[str] = Field(default_factory=list)
     evidence: list[EvidenceItem] = Field(default_factory=list)
+
+
+class LiveDetails(BaseModel):
+    as_of: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}T.*Z$")
+    provider: Literal["f1api.dev"] = "f1api.dev"
+    endpoint_key: str | None = None
