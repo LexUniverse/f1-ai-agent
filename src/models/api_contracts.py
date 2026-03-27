@@ -34,3 +34,17 @@ class NextMessageResponse(BaseModel):
     message: str
     status: Literal["ready", "failed"]
     details: dict = Field(default_factory=dict)
+
+
+class EvidenceItem(BaseModel):
+    source_id: str
+    snippet: str
+    entity_tags: list[str]
+    rank_score: float
+    used_in_answer: bool = False
+
+
+class RetrievalArtifacts(BaseModel):
+    normalized_query: str
+    canonical_entity_ids: list[str] = Field(default_factory=list)
+    evidence: list[EvidenceItem] = Field(default_factory=list)
