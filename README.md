@@ -1,73 +1,30 @@
 # F1 Assistant
 
-Асинхронный чат про Формулу 1 на русском: **RAG** по локальному индексу (Chroma + CSV f1db), при слабом или пустом контексте — **веб-поиск Tavily** (через LangChain). Ответы собирает **GigaChat** (судья по достаточности RAG, формулировка поискового запроса, синтез по чанкам и по сниппетам из веба). **Отдельный REST API Formula 1 (f1api.dev) в пайплайне не используется.**
+Асинхронный русскоязычный чат про Формулу 1: **RAG** по локальному индексу (Chroma + CSV f1db), при неудовлетворительном ответе супервизора — **один** запрос **Tavily** за ход и опциональная догрузка страницы; синтез и проверка ответов — **GigaChat**. Внешний REST Formula 1 (f1api.dev) в основном пайплайне не используется.
 
-Docker для локального запуска **не обязателен**.
-
----
-
-## Где что в коде
-
-| Что | Файл |
-|-----|------|
-| **LangGraph** (узлы: retrieve → sufficiency → RAG или Tavily → синтез) | `src/graph/f1_turn_graph.py` |
-| **Tavily** (LangChain Community, один запрос за ход) | `src/graph/tavily_tool.py` |
-| **Вызовы GigaChat** (чат-комплишены) | `src/answer/gigachat_rag.py` |
-| **HTTP API** (`/start_chat`, `/message_status`, `/next_message`), запуск графа в потоке | `src/api/chat.py` |
-| **Точка входа сервера** | `api.py`, `src/main.py` |
-| **Нормализация текста запроса** (без словаря алиасов; RAG только по вектору) | `src/retrieval/query_normalize.py` |
-| **Русские сезонные сводки для индекса** (последние N лет из нескольких CSV) | `src/retrieval/season_summary_corpus.py` |
-| **Эмбеддинги Chroma** (по умолчанию `ai-forever/ru-en-RoSBERTa`) | `src/retrieval/embeddings.py` |
-| **Поиск по Chroma** | `src/retrieval/retriever.py` |
-| **Streamlit-клиент** | `streamlit_app.py` |
-
-Цепочка запроса: `next_message` → `normalize_retrieval_query` → `run_f1_turn_sync` → в графе векторный поиск по **исходному русскому вопросу** (та же модель эмбеддинга, что при индексации), затем при необходимости `gigachat_rag.py` и `tavily_tool.py`.
+**Полная документация** (структура файлов, чанкинг, векторный поиск, LangGraph, промпты, контракты API): [README_DETAILED.md](README_DETAILED.md).
 
 ---
 
-## Почему в репозитории нет строки `GIGACHAT_CREDENTIALS`
+## Стек
 
-Ключ **нужен**, но приложение **не читает** переменную само: клиент **`gigachat`** при создании `GigaChat()` подхватывает стандартные переменные окружения из процесса (в первую очередь **`GIGACHAT_CREDENTIALS`** — Base64 для Basic-авторизации из личного кабинета). См. [документацию SDK](https://github.com/ai-forever/gigachat).
+| Слой | Технологии |
+|------|------------|
+| API | Python 3.12–3.13 (рекомендуется), FastAPI, uvicorn, Pydantic v2 |
+| RAG | Chroma (persistent), sentence-transformers, по умолчанию `ai-forever/ru-en-RoSBERTa` |
+| Оркестрация | LangGraph |
+| LLM | GigaChat (SDK `gigachat`) |
+| Веб-поиск | Tavily через LangChain Community |
+| UI | Streamlit, httpx |
+| Тесты | pytest |
 
-Использование в коде: все вызовы идут через `GigaChat(**_client_kwargs())` в `src/answer/gigachat_rag.py` (`_chat_completion_json`, `_chat_completion_plain_line` и т.д.).
-
----
-
-## RAG без алиасов
-
-Статический **`alias_resolver`** убран. Индекс строится из **русскоязычных сезонных сводок** (число пилотов, таблица «команда — пилот — место — очки», отдельный чанк на каждый Гран-при с подиумом и поисковыми подсказками). Запрос пользователя эмбеддится моделью **`ai-forever/ru-en-RoSBERTa`**. При слабом совпадении по-прежнему может сработать **Tavily**, если задан `TAVILY_API_KEY`.
-
----
-
-## Переменные окружения
-
-Скопируйте `.env.example` → `.env` и заполните.
-
-| Переменная | Обязательно | Назначение | Где взять |
-|------------|-------------|------------|-----------|
-| **`GIGACHAT_CREDENTIALS`** | Да, для реальных ответов LLM | Авторизация GigaChat (читает SDK) | [GigaChat API / кабинет](https://developers.sber.ru/portal/products/gigachat-api), см. [gigachat-python](https://github.com/ai-forever/gigachat) |
-| **`TAVILY_API_KEY`** | Да, если нужен веб-поиск при слабом RAG | Поиск Tavily | [tavily.com](https://tavily.com) — API key в дашборде |
-| **`AUTH_ALLOWLIST_CODES`** | Да для прод-режима | Коды доступа через запятую | Задаёте сами |
-| **`F1_API_BASE_URL`** | Нет | Базовый URL API для Streamlit (по умолчанию `http://127.0.0.1:8000`) | Локально не менять |
-| **`GIGACHAT_MODEL`** | Нет | Имя модели (по умолчанию `GigaChat`) | Документация GigaChat |
-| **`GIGACHAT_TIMEOUT`**, **`GIGACHAT_MAX_RETRIES`**, **`GIGACHAT_VERIFY_SSL_CERTS`** | Нет | Тонкая настройка клиента | См. `.env.example` |
-| **`TAVILY_TIMEOUT`**, **`TAVILY_MAX_RESULTS`** | Нет | Таймаут и число результатов Tavily | `src/graph/tavily_tool.py` |
-| **`F1_EMBEDDING_MODEL`** | Нет | Модель Chroma (`sentence-transformers`): индексация и запросы | По умолчанию `ai-forever/ru-en-RoSBERTa` |
-| **`F1_LOG_SUPERVISOR_DECISIONS`** | Нет | Логи супервизора через `logging` | См. `gigachat_rag.py` |
-
-При чтении уже собранной коллекции Chroma использует сохранённую при индексации конфигурацию эмбеддингов; новая коллекция создаётся с **`F1_EMBEDDING_MODEL`** из `.env` (или тем же дефолтом в коде).
-
-Без **`TAVILY_API_KEY`** при нехватке RAG ответ завершится ошибкой **`WEB_SEARCH_UNAVAILABLE`** (см. `src/search/messages_ru.py`).
+Зависимости: `requirements.txt`.
 
 ---
 
-## Установка и индекс RAG
+## Как развернуть у себя
 
-### Версия Python
-
-Рекомендуется **3.12 или 3.13**. На **3.14** возможны предупреждения вида `Pydantic V1 … isn't compatible with Python 3.14` из зависимостей LangChain — это известное несоответствие до обновления upstream; для спокойной разработки лучше venv на 3.12/3.13.
-
-### Виртуальное окружение
+### 1. Окружение
 
 ```bash
 python3 -m venv .venv
@@ -75,57 +32,50 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Запуск API:
+Скопируйте [`.env.example`](.env.example) в `.env` и задайте минимум:
 
-- **Предпочтительно:** `python api.py` — смотрит только каталог **`src/`** и не должен перезагружаться из‑за правок в **`.venv`** (chromadb и др. тянут тяжёлые пакеты с `.py` в site-packages).
-- Если запускаете **uvicorn вручную**, обязательно ограничьте каталоги, иначе reloader увидит `.venv/.../*.py` и будет крутить перезапуск по кругу:
+- **`GIGACHAT_CREDENTIALS`** — для ответов модели ([документация SDK](https://github.com/ai-forever/gigachat)).
+- **`TAVILY_API_KEY`** — если нужен веб-поиск при отклонении RAG супервизором ([tavily.com](https://tavily.com)).
+- **`AUTH_ALLOWLIST_CODES`** — коды доступа через запятую (для прод-режима API).
 
-  ```bash
-  uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload \
-    --reload-dir src \
-    --reload-exclude .venv --reload-exclude .chroma --reload-exclude .git
-  ```
+Остальные переменные (модель GigaChat, таймауты, `F1_EMBEDDING_MODEL`, `F1_API_BASE_URL` для Streamlit) — в `.env.example` и в [README_DETAILED.md](README_DETAILED.md).
 
-  (`--reload-exclude` можно повторять; пути заданы относительно текущей директории — запускайте из корня репозитория.)
+### 2. Индекс RAG
 
-### Сборка Chroma из CSV (сезонные сводки)
-
-Иначе retrieval не найдёт чанки (до GigaChat/Tavily дойдёт только «пустой» контекст).
-
-1. Подготовьте **`f1db-csv/`** с файлами, из которых собирается сводка (минимальный набор):  
-   `f1db-seasons-driver-standings.csv`, `f1db-seasons-entrants-drivers.csv`, `f1db-drivers.csv`, `f1db-constructors.csv`, `f1db-grands-prix.csv`, `f1db-countries.csv`, `f1db-races.csv`, `f1db-races-race-results.csv`.
-2. Соберите индекс (последние **50** сезонов от максимального года в CSV; эмбеддинги **ru-en-RoSBERTa**, первый запуск скачает веса):
+Подготовьте каталог **`f1db-csv/`** с нужными CSV (список файлов — в [README_DETAILED.md](README_DETAILED.md) §3 или в комментарии в `src/retrieval/index_builder.py`).
 
 ```bash
 python3 scripts/build_f1_season_summaries.py
-# или:
-python3 -c "from src.retrieval.index_builder import build_historical_index; print(build_historical_index())"
 ```
 
-Опционально посмотреть чанки без Chroma:  
-`python3 scripts/build_f1_season_summaries.py --dump-jsonl /tmp/f1_chunks.jsonl`
+Индекс создаётся в **`.chroma/`**. После смены модели эмбеддингов пересоберите индекс.
 
-Индекс пишется в **`.chroma/`**; переиндексация **обязательна** после смены модели эмбеддингов.
-
-Если в UI в блоке «Контекст (RAG)» **всегда один и тот же чанк** (или ответы не опираются на корпус), проверьте объём коллекции: после полной сборки в Chroma должны быть **сотни** документов, а не один. Иначе перезапустите `build_f1_season_summaries.py` из корня проекта.
-
----
-
-## Запуск
+### 3. Запуск
 
 Из **корня репозитория**:
 
-1. **`python api.py`** — API на `127.0.0.1:8000` (или см. `api.py`).
-2. В другом терминале: **`streamlit run streamlit_app.py`**.
+```bash
+python api.py
+```
 
-В Streamlit укажите код из **`AUTH_ALLOWLIST_CODES`** и вопрос.
+API: `http://127.0.0.1:8000` (см. `api.py` при необходимости смены порта).
 
----
+В другом терминале:
 
-## Тесты
+```bash
+streamlit run streamlit_app.py
+```
+
+В Streamlit укажите код из `AUTH_ALLOWLIST_CODES` и вопрос.
+
+**Совместимость Python:** на 3.14 возможны предупреждения от зависимостей LangChain; для разработки удобнее 3.12/3.13.
+
+**Uvicorn вручную:** ограничьте `--reload-dir` каталогом `src` и исключите `.venv` и `.chroma`, иначе reloader будет лишний раз перезапускать сервер — пример в [README_DETAILED.md](README_DETAILED.md) §2.1 / исторически в комментариях к `api.py`.
+
+### 4. Тесты
 
 ```bash
 pytest
 ```
 
-Настройки см. `pytest.ini`. Отдельные smoke-тесты с реальными GigaChat/Tavily (по плану майлстоуна) могут быть добавлены позже с маркером `integration`.
+Настройки: `pytest.ini`.

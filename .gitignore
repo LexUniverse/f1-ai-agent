@@ -10,3 +10,5 @@ embedding_model/
 .cursor/
 .planning/
 .vscode/
+f1db-csv/
+certs/
