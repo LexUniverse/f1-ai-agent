@@ -34,13 +34,10 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ GigaChat classic RAG on historical paths with hybrid citations and explicit template fallback + disclosure when the LLM fails — validated in Phase 06 (gigachat-classic-rag); *confidence on that path superseded by v1.3.*
 - ✓ Streamlit operator UI (`/start_chat`, status polling, `/next_message`) with citations and synthesis metadata; documented local **API + Streamlit** run — validated in Phase 07 (streamlit-ui-local-run); *UI confidence superseded by v1.3.*
 - ✓ **LangGraph** turn with **RAG** + **Tavily (LangChain)** and **GigaChat**; **f1api.dev** removed from answer path — validated in Phase 08 (langgraph-supervisor-tavily-tooling); *linear orchestration superseded by v1.3 supervisor–agent loop.*
+- ✓ **Supervisor–Agent 1** LangGraph (RAG-first, ≤2 Tavily rounds, AGT-05 terminal copy), **no `confidence`** in synthesis types or graph outputs, **`details.web`** when search used — validated in Phase 09 (supervisor-agent-graph-no-confidence-web-provenance).
 
 ### Active (v1.3)
 
-- **AGT-03 — AGT-05:** Supervisor–Agent 1 loop (LangGraph + LangChain tool), RAG-first, ≤2 search iterations, terminal failure copy.
-- **SRCH-03:** Final user-visible **`message`** answers the **original** question (no query-echo / sources-only as sole body).
-- **WEB-01:** Structured **`details.web`** when search tool used.
-- **API-05:** **`confidence` removed** from all API payloads, Pydantic models, and downstream builders.
 - **UI-04, UI-05:** Chronological chat; message first; expandable sources.
 - **DOC-01, TST-01:** README + `.env` catalog; opt-in live smokes.
 
@@ -90,4 +87,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — v1.3 rescoped: supervisor–agent loop, confidence removed product-wide*
+*Last updated: 2026-03-28 — Phase 9 complete: supervisor graph, API-05, WEB-01; next Streamlit UX (Phase 10).*

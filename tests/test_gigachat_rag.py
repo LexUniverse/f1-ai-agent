@@ -9,7 +9,7 @@ from src.answer.gigachat_rag import (
     gigachat_synthesize_from_web_results,
     gigachat_synthesize_historical,
 )
-from src.answer.russian_qna import build_sources_block_ru_from_evidence, qna_confidence_from_evidence
+from src.answer.russian_qna import build_sources_block_ru_from_evidence
 from src.models.api_contracts import AnswerSection, EvidenceItem, StructuredRUAnswer
 
 
@@ -50,7 +50,6 @@ def test_gigachat_synthesize_historical_returns_hybrid_structured_answer(monkeyp
 
     monkeypatch.setattr("src.answer.gigachat_rag.GigaChat", FakeGC)
     result = gigachat_synthesize_historical(evidence=evidence, user_question="что там?")
-    assert result.confidence == qna_confidence_from_evidence(evidence)
     block, _ = build_sources_block_ru_from_evidence(evidence)
     assert block in result.structured_answer.sources_block_ru
     assert "[1]" in result.structured_answer.sources_block_ru
@@ -104,6 +103,7 @@ def test_chat_historical_next_message_uses_synthesis_route_when_mocked(client, m
             {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
         ],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
 
     def fake_hist(*, evidence, user_question):
         block, cc = build_sources_block_ru_from_evidence(evidence)
@@ -114,7 +114,6 @@ def test_chat_historical_next_message_uses_synthesis_route_when_mocked(client, m
                 sources_block_ru=block,
                 citation_count=cc,
             ),
-            confidence=qna_confidence_from_evidence(evidence),
         )
 
     monkeypatch.setattr(f1g, "gigachat_synthesize_historical", fake_hist)
@@ -144,6 +143,7 @@ def test_historical_fallback_sets_synthesis_route_and_disclosure(client, monkeyp
             {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
         ],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
     monkeypatch.setattr(
         f1g,
         "gigachat_synthesize_historical",
@@ -177,6 +177,7 @@ def test_success_path_has_no_disclosure_phrase(client, monkeypatch):
             {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
         ],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
 
     def fake_hist(*, evidence, user_question):
         block, cc = build_sources_block_ru_from_evidence(evidence)
@@ -187,7 +188,6 @@ def test_success_path_has_no_disclosure_phrase(client, monkeypatch):
                 sources_block_ru=block,
                 citation_count=cc,
             ),
-            confidence=qna_confidence_from_evidence(evidence),
         )
 
     monkeypatch.setattr(f1g, "gigachat_synthesize_historical", fake_hist)

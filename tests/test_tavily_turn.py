@@ -61,7 +61,6 @@ def test_historical_path_still_works(client, monkeypatch):
                     "sources_block_ru": "Источники:\n[1] x",
                     "citation_count": 1,
                 },
-                "confidence": {"tier_ru": "высокая", "score": 0.9},
                 "synthesis": {"route": GIGACHAT_SUCCESS_ROUTE},
             },
             "synthesis_route": GIGACHAT_SUCCESS_ROUTE,

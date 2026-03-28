@@ -20,7 +20,7 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0–v1.
 - [x] **Phase 6: GigaChat Classic RAG** - *(Completed: 2026-03-27)*
 - [x] **Phase 7: Streamlit UI & Local Run** - *(Completed: 2026-03-27)*
 - [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28; linear graph — superseded by Phase 9 design)*
-- [ ] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - **AGT-03, AGT-04, AGT-05**, **SRCH-03**, **WEB-01**, **API-05**: LangGraph+LangChain supervisor loop (RAG first, ≤2 searches, terminal RU failure); strip all `confidence` from models and payloads; `details.web`; tests for loop bounds and answer quality.
+- [x] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - *(Completed: 2026-03-28)* **AGT-03, AGT-04, AGT-05**, **SRCH-03**, **WEB-01**, **API-05**: LangGraph+LangChain supervisor loop (RAG first, ≤2 searches, terminal RU failure); strip all `confidence` from models and payloads; `details.web`; tests for loop bounds and answer quality.
 - [ ] **Phase 10: Streamlit Chat UX** - **UI-04**, **UI-05**: chronological append-order, message-first + expandable sources (no confidence — **API-05**).
 - [ ] **Phase 11: README & Credential Smokes** - **DOC-01**, **TST-01**.
 
@@ -66,6 +66,6 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0–v1.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1–8 | … | Complete | 2026-03-27 — 2026-03-28 |
-| 9. Supervisor–Agent Graph, No Confidence, Web Provenance | 0/TBD | Planned | — |
+| 9. Supervisor–Agent Graph, No Confidence, Web Provenance | 2/2 | Complete | 2026-03-28 |
 | 10. Streamlit Chat UX | 0/TBD | Planned | — |
 | 11. README & Credential Smokes | 0/TBD | Planned | — |

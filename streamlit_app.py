@@ -38,12 +38,6 @@ def _http_error_message(exc: httpx.HTTPStatusError) -> str:
 
 def _render_assistant_block(content: str, details: dict) -> None:
     st.markdown(content)
-    conf = details.get("confidence")
-    if isinstance(conf, dict):
-        st.caption("Уверенность")
-        tier = conf.get("tier_ru", "")
-        score = conf.get("score", "")
-        st.markdown(f"**{tier}** ({score})")
 
     structured = details.get("structured_answer")
     sources = None
@@ -52,6 +46,11 @@ def _render_assistant_block(content: str, details: dict) -> None:
     if sources:
         st.markdown("**Источники**")
         st.markdown(f"```\n{sources}\n```")
+
+    web = details.get("web")
+    if isinstance(web, dict):
+        with st.expander("Веб-поиск", expanded=False):
+            st.json(web)
 
     live = details.get("live")
     if isinstance(live, dict):

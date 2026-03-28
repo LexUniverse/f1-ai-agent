@@ -53,6 +53,21 @@ class StructuredRUAnswer(BaseModel):
     citation_count: int
 
 
+class WebSearchResultItem(BaseModel):
+    """One row shown in API `details.web.results` after a web-augmented turn."""
+
+    url: str
+    title: str | None = None
+    content_snippet: str
+
+
+class WebSearchDetails(BaseModel):
+    """Shape of `details.web` in JSON responses (from `model_dump()` in the chat layer)."""
+
+    queries: list[str]
+    results: list[WebSearchResultItem]
+
+
 class EvidenceItem(BaseModel):
     source_id: str
     snippet: str

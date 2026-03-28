@@ -7,10 +7,13 @@ from src.auth.errors import AUTH_UNAUTHORIZED, unauthorized_error
 from src.auth.service import AuthService
 from src.graph.f1_turn_graph import F1TurnState, run_f1_turn_sync
 from src.models.api_contracts import (
+    EvidenceItem,
     MessageStatusResponse,
     NextMessageResponse,
     StartChatRequest,
     StartChatResponse,
+    WebSearchDetails,
+    WebSearchResultItem,
 )
 from src.retrieval.alias_resolver import resolve_entities
 from src.search.messages_ru import WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
@@ -24,6 +27,53 @@ PROCESS_CALLS = {"count": 0}
 def process_chat_message() -> str:
     PROCESS_CALLS["count"] += 1
     return "ok"
+
+
+def assemble_next_message_details(
+    *,
+    normalized_query: str,
+    canonical_entity_ids: list[str],
+    evidence: list[EvidenceItem],
+    out_details: dict,
+    synthesis_route: str,
+) -> dict:
+    """Build the `details` dict for a successful `/next_message` response (tested in phase 9)."""
+    synthesis_raw = out_details.get("synthesis")
+    synthesis_out: dict = dict(synthesis_raw) if isinstance(synthesis_raw, dict) else {}
+    if synthesis_route and "route" not in synthesis_out:
+        synthesis_out["route"] = synthesis_route
+
+    details: dict = {
+        "code": "OK",
+        "normalized_query": normalized_query,
+        "canonical_entity_ids": canonical_entity_ids,
+        "evidence": [item.model_dump() for item in evidence],
+        "synthesis": synthesis_out,
+    }
+    structured = out_details.get("structured_answer")
+    if isinstance(structured, dict):
+        details["structured_answer"] = structured
+
+    tq = out_details.get("tavily_queries")
+    wr = out_details.get("web_results")
+    if isinstance(tq, list) and isinstance(wr, list) and (tq or wr):
+        items: list[WebSearchResultItem] = []
+        for row in wr:
+            if not isinstance(row, dict):
+                continue
+            content = str(row.get("content", ""))
+            snippet = content[:500] + ("…" if len(content) > 500 else "")
+            title_raw = row.get("title")
+            items.append(
+                WebSearchResultItem(
+                    url=str(row.get("url", "")),
+                    title=str(title_raw) if title_raw is not None else None,
+                    content_snippet=snippet,
+                )
+            )
+        web = WebSearchDetails(queries=[str(x) for x in tq], results=items)
+        details["web"] = web.model_dump()
+    return details
 
 
 def _session_dependency(request: Request, x_session_id: str | None = Header(default=None)):
@@ -91,8 +141,6 @@ async def next_message(request: Request, _session=Depends(_session_dependency)):
             item.used_in_answer = True
 
         out_details = final.get("out_details") or {}
-        structured = out_details.get("structured_answer")
-        confidence = out_details.get("confidence")
         synthesis_raw = out_details.get("synthesis")
         route = ""
         if isinstance(synthesis_raw, dict) and synthesis_raw.get("route"):
@@ -100,21 +148,13 @@ async def next_message(request: Request, _session=Depends(_session_dependency)):
         if not route:
             route = str(final.get("synthesis_route") or "")
 
-        synthesis_out: dict = dict(synthesis_raw) if isinstance(synthesis_raw, dict) else {}
-        if route and "route" not in synthesis_out:
-            synthesis_out["route"] = route
-
-        details: dict = {
-            "code": "OK",
-            "normalized_query": normalized_query,
-            "canonical_entity_ids": canonical_entity_ids,
-            "evidence": [item.model_dump() for item in evidence],
-            "synthesis": synthesis_out,
-        }
-        if isinstance(structured, dict):
-            details["structured_answer"] = structured
-        if isinstance(confidence, dict):
-            details["confidence"] = confidence
+        details = assemble_next_message_details(
+            normalized_query=normalized_query,
+            canonical_entity_ids=canonical_entity_ids,
+            evidence=evidence,
+            out_details=out_details,
+            synthesis_route=route,
+        )
 
         store.set_status(_session.session_id, "ready", None)
         return NextMessageResponse(

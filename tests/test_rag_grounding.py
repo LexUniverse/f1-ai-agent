@@ -19,7 +19,6 @@ def _fake_gigachat_historical(*, evidence, user_question: str = ""):
             sources_block_ru=block,
             citation_count=cc,
         ),
-        confidence=conf,
     )
 
 
@@ -97,7 +96,7 @@ def test_next_message_grounds_from_indexed_f1db_context(client, monkeypatch):
         lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]),
     )
     monkeypatch.setattr(f1g, "retrieve_historical_context", _retrieve_with_boosted_scores)
-    monkeypatch.setattr(f1g, "gigachat_judge_rag_sufficient", lambda **_: True)
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
     monkeypatch.setattr(
         f1g,
         "gigachat_synthesize_historical",
@@ -128,6 +127,7 @@ def test_response_contains_traceable_evidence(client, monkeypatch):
         "retrieve_historical_context",
         lambda *_args, **_kwargs: [{"source_id": "f1db:driver:verstappen", "snippet": "Multiple wins in modern era", "score": 0.93}],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
     monkeypatch.setattr(
         f1g,
         "gigachat_synthesize_historical",

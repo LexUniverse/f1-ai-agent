@@ -1,8 +1,6 @@
 """
-F1 assistant turn as a compiled LangGraph: retrieve → sufficiency → optional Tavily → synthesis.
-
-top_score is max(hit["score"]) from retrieve_historical_context, matching retriever.py:
-score = max(0.0, 1.0 - distance) per hit; hits below min_score are omitted by the retriever.
+F1 assistant turn as a compiled LangGraph: retrieve → RAG synthesis → supervisor loop
+with at most two Tavily rounds after a rejected RAG answer (AGT-03–05).
 """
 
 from __future__ import annotations
@@ -19,15 +17,16 @@ from src.answer.gigachat_rag import (
     GIGACHAT_WEB_ROUTE,
     append_fallback_disclosure_ru,
     gigachat_author_tavily_query,
-    gigachat_judge_rag_sufficient,
+    gigachat_supervisor_accept_answer,
     gigachat_synthesize_from_web_results,
     gigachat_synthesize_historical,
 )
-from src.answer.russian_qna import build_structured_ru_answer, live_qna_confidence, qna_confidence_from_evidence
+from src.answer.russian_qna import build_structured_ru_answer, tier_ru_from_max_score
 from src.graph.tavily_tool import TavilyConfigError, run_tavily_search_once
 from src.models.api_contracts import AnswerSection, EvidenceItem, StructuredRUAnswer
 from src.retrieval.evidence import format_evidence
 from src.retrieval.retriever import retrieve_historical_context
+from src.search.messages_ru import UNABLE_TO_ANSWER_SUPERVISOR_RU, WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
 
 JudgeFn = Callable[[str, list[EvidenceItem]], bool]
 
@@ -40,11 +39,15 @@ class F1TurnState(TypedDict, total=False):
     evidence: list[EvidenceItem]
     retrieval_hits: list[dict[str, Any]]
     top_score: float
-    rag_sufficient: bool
-    needs_tavily: bool
-    tavily_query: str
-    web_results: list[dict[str, Any]]
+    web_search_rounds: int
+    candidate_message: str
+    candidate_structured: dict[str, Any]
+    supervisor_accept: bool
     synthesis_route: str
+    tavily_queries: list[str]
+    web_results: list[dict[str, Any]]
+    last_web_batch: list[dict[str, Any]]
+    synthesis_meta: dict[str, Any]
     error_code: str | None
     terminal_status: str
     out_message: str
@@ -53,13 +56,21 @@ class F1TurnState(TypedDict, total=False):
 
 def _default_gigachat_judge(_user_question: str, _evidence: list[EvidenceItem]) -> bool:
     raise NotImplementedError(
-        "Borderline RAG scores require judge_fn=... in build_compiled_graph() "
-        "(production uses gigachat_judge_rag_sufficient via run_f1_turn_sync)."
+        "Legacy judge_fn is unused in the supervisor graph; pass judge_fn only for API compatibility."
     )
 
 
 def _empty_f1_state() -> F1TurnState:
-    return cast(F1TurnState, {"user_question": ""})
+    return cast(
+        F1TurnState,
+        {
+            "user_question": "",
+            "web_search_rounds": 0,
+            "tavily_queries": [],
+            "web_results": [],
+            "last_web_batch": [],
+        },
+    )
 
 
 def _node_retrieve(state: F1TurnState) -> dict[str, Any]:
@@ -78,26 +89,6 @@ def _node_retrieve(state: F1TurnState) -> dict[str, Any]:
     }
 
 
-def _make_node_sufficiency(judge_fn: JudgeFn):
-    def _node_sufficiency(state: F1TurnState) -> dict[str, Any]:
-        evidence = state.get("evidence") or []
-        top_score = float(state.get("top_score", 0.0))
-        if not evidence:
-            return {"rag_sufficient": False, "needs_tavily": True}
-        if top_score >= 0.45:
-            return {"rag_sufficient": True, "needs_tavily": False}
-        if 0.35 <= top_score < 0.45:
-            sufficient = bool(judge_fn(state["user_question"], evidence))
-            return {"rag_sufficient": sufficient, "needs_tavily": not sufficient}
-        return {"rag_sufficient": False, "needs_tavily": True}
-
-    return _node_sufficiency
-
-
-def _route_after_sufficiency(state: F1TurnState) -> Literal["tavily", "rag_synthesize"]:
-    return "tavily" if state.get("needs_tavily") else "rag_synthesize"
-
-
 def _web_sources_fallback(web_results: list[dict[str, Any]]) -> tuple[str, int]:
     lines: list[str] = ["Источники:"]
     for n, row in enumerate(web_results, start=1):
@@ -108,8 +99,51 @@ def _web_sources_fallback(web_results: list[dict[str, Any]]) -> tuple[str, int]:
     return "\n".join(lines), len(web_results)
 
 
-def _node_tavily(state: F1TurnState) -> dict[str, Any]:
+def _node_agent1_rag(state: F1TurnState) -> dict[str, Any]:
+    evidence = state.get("evidence") or []
+    try:
+        result = gigachat_synthesize_historical(evidence=evidence, user_question=state["user_question"])
+        return {
+            "candidate_message": result.message,
+            "candidate_structured": result.structured_answer.model_dump(),
+            "synthesis_route": GIGACHAT_SUCCESS_ROUTE,
+            "synthesis_meta": {},
+        }
+    except Exception as exc:
+        structured = build_structured_ru_answer(evidence)
+        summary = evidence[0].snippet.strip()[:120] if evidence else ""
+        max_sc = max((e.rank_score for e in evidence), default=0.0)
+        tier = tier_ru_from_max_score(max_sc)
+        base_message = f"Историческая сводка: {summary}. Уверенность: {tier}."
+        message = append_fallback_disclosure_ru(base_message)
+        return {
+            "candidate_message": message,
+            "candidate_structured": structured.model_dump(),
+            "synthesis_route": GIGACHAT_FALLBACK_ROUTE,
+            "synthesis_meta": {"gigachat_error_class": type(exc).__name__},
+        }
+
+
+def _node_supervisor(state: F1TurnState) -> dict[str, Any]:
+    accept = gigachat_supervisor_accept_answer(
+        user_question=state["user_question"],
+        candidate_answer=state["candidate_message"],
+    )
+    return {"supervisor_accept": accept}
+
+
+def _route_after_supervisor(state: F1TurnState) -> Literal["finalize_accept", "finalize_fail", "tavily_search"]:
+    if state.get("supervisor_accept"):
+        return "finalize_accept"
+    if int(state.get("web_search_rounds", 0)) >= 2:
+        return "finalize_fail"
+    return "tavily_search"
+
+
+def _node_tavily_search(state: F1TurnState) -> dict[str, Any]:
     uq = state["user_question"]
+    prev_q = list(state.get("tavily_queries") or [])
+    wr = int(state.get("web_search_rounds", 0))
     try:
         authored = gigachat_author_tavily_query(user_question=uq)
         q = (authored or uq).strip()[:500]
@@ -119,23 +153,24 @@ def _node_tavily(state: F1TurnState) -> dict[str, Any]:
         web = run_tavily_search_once(q)
         if not web:
             return {
-                "tavily_query": q,
-                "web_results": [],
+                "tavily_queries": prev_q + [q],
                 "error_code": "WEB_SEARCH_UNAVAILABLE",
                 "terminal_status": "failed",
                 "out_message": "",
                 "synthesis_route": "",
             }
+        merged = list(state.get("web_results") or [])
+        merged.extend(web)
         return {
-            "tavily_query": q,
-            "web_results": web,
+            "tavily_queries": prev_q + [q],
+            "web_search_rounds": wr + 1,
+            "last_web_batch": web,
+            "web_results": merged,
             "error_code": None,
-            "terminal_status": "ready",
         }
     except (TavilyConfigError, requests.RequestException, OSError, RuntimeError, ValueError):
         return {
-            "tavily_query": q,
-            "web_results": [],
+            "tavily_queries": prev_q + [q],
             "error_code": "WEB_SEARCH_UNAVAILABLE",
             "terminal_status": "failed",
             "out_message": "",
@@ -143,8 +178,7 @@ def _node_tavily(state: F1TurnState) -> dict[str, Any]:
         }
     except Exception:
         return {
-            "tavily_query": q,
-            "web_results": [],
+            "tavily_queries": prev_q + [q],
             "error_code": "WEB_SEARCH_UNAVAILABLE",
             "terminal_status": "failed",
             "out_message": "",
@@ -153,119 +187,124 @@ def _node_tavily(state: F1TurnState) -> dict[str, Any]:
 
 
 def _route_after_tavily(state: F1TurnState):
-    if state.get("terminal_status") == "failed":
+    if state.get("terminal_status") == "failed" and state.get("error_code") == "WEB_SEARCH_UNAVAILABLE":
         return END
-    return "web_synthesize"
+    return "agent1_web"
 
 
-def _node_rag_synthesize(state: F1TurnState) -> dict[str, Any]:
-    evidence = state.get("evidence") or []
-    try:
-        result = gigachat_synthesize_historical(evidence=evidence, user_question=state["user_question"])
-        return {
-            "out_message": result.message,
-            "out_details": {
-                "structured_answer": result.structured_answer.model_dump(),
-                "confidence": result.confidence.model_dump(),
-                "synthesis": {"route": GIGACHAT_SUCCESS_ROUTE},
-            },
-            "terminal_status": "ready",
-            "synthesis_route": GIGACHAT_SUCCESS_ROUTE,
-        }
-    except Exception as exc:
-        structured = build_structured_ru_answer(evidence)
-        conf = qna_confidence_from_evidence(evidence)
-        summary = evidence[0].snippet.strip()[:120] if evidence else ""
-        base_message = f"Историческая сводка: {summary}. Уверенность: {conf.tier_ru}."
-        message = append_fallback_disclosure_ru(base_message)
-        return {
-            "out_message": message,
-            "out_details": {
-                "structured_answer": structured.model_dump(),
-                "confidence": conf.model_dump(),
-                "synthesis": {
-                    "route": GIGACHAT_FALLBACK_ROUTE,
-                    "gigachat_error_class": type(exc).__name__,
-                },
-            },
-            "terminal_status": "ready",
-            "synthesis_route": GIGACHAT_FALLBACK_ROUTE,
-        }
-
-
-def _node_web_synthesize(state: F1TurnState) -> dict[str, Any]:
-    web = state.get("web_results") or []
+def _node_agent1_web(state: F1TurnState) -> dict[str, Any]:
+    web = state.get("last_web_batch") or []
     try:
         result = gigachat_synthesize_from_web_results(user_question=state["user_question"], web_results=web)
         return {
-            "out_message": result.message,
-            "out_details": {
-                "structured_answer": result.structured_answer.model_dump(),
-                "confidence": result.confidence.model_dump(),
-                "synthesis": {"route": GIGACHAT_WEB_ROUTE},
-            },
-            "terminal_status": "ready",
+            "candidate_message": result.message,
+            "candidate_structured": result.structured_answer.model_dump(),
             "synthesis_route": GIGACHAT_WEB_ROUTE,
+            "synthesis_meta": {},
         }
     except Exception as exc:
         sources_block_ru, cc = _web_sources_fallback(web)
-        body = "\n\n".join(
-            str(w.get("content", ""))[:400] for w in web[:5]
-        ) or "Краткая выжимка по найденным страницам."
+        body = "\n\n".join(str(w.get("content", ""))[:400] for w in web[:5]) or "Краткая выжимка по найденным страницам."
         structured = StructuredRUAnswer(
             sections=[AnswerSection(heading="По данным поиска", body=body)],
             sources_block_ru=sources_block_ru,
             citation_count=cc,
         )
-        conf = live_qna_confidence()
-        base = "Ответ по найденным веб-источникам (шаблон)."
+        tier = tier_ru_from_max_score(0.55)
+        base = f"Ответ по найденным веб-источникам (шаблон). Уверенность: {tier}."
         message = append_fallback_disclosure_ru(base)
         return {
-            "out_message": message,
-            "out_details": {
-                "structured_answer": structured.model_dump(),
-                "confidence": conf.model_dump(),
-                "synthesis": {
-                    "route": GIGACHAT_FALLBACK_ROUTE,
-                    "gigachat_error_class": type(exc).__name__,
-                },
-            },
-            "terminal_status": "ready",
+            "candidate_message": message,
+            "candidate_structured": structured.model_dump(),
             "synthesis_route": GIGACHAT_FALLBACK_ROUTE,
+            "synthesis_meta": {"gigachat_error_class": type(exc).__name__},
         }
 
 
+def _node_finalize_accept(state: F1TurnState) -> dict[str, Any]:
+    web_used = int(state.get("web_search_rounds", 0)) > 0
+    route = state.get("synthesis_route", GIGACHAT_SUCCESS_ROUTE)
+    synthesis: dict[str, Any] = {"route": route}
+    meta = state.get("synthesis_meta")
+    if isinstance(meta, dict):
+        synthesis.update(meta)
+    details: dict[str, Any] = {
+        "structured_answer": state["candidate_structured"],
+        "synthesis": synthesis,
+    }
+    if web_used:
+        details["tavily_queries"] = list(state.get("tavily_queries") or [])
+        details["web_results"] = list(state.get("web_results") or [])
+    return {
+        "out_message": state["candidate_message"],
+        "out_details": details,
+        "terminal_status": "ready",
+    }
+
+
+def _node_finalize_fail(state: F1TurnState) -> dict[str, Any]:
+    details: dict[str, Any] = {
+        "structured_answer": state.get("candidate_structured") or {},
+        "synthesis": {"route": "supervisor_gave_up"},
+        "tavily_queries": list(state.get("tavily_queries") or []),
+        "web_results": list(state.get("web_results") or []),
+    }
+    return {
+        "out_message": UNABLE_TO_ANSWER_SUPERVISOR_RU,
+        "out_details": details,
+        "terminal_status": "ready",
+        "synthesis_route": "supervisor_gave_up",
+    }
+
+
 def build_compiled_graph(*, judge_fn: JudgeFn | None = None):
-    judge = judge_fn or _default_gigachat_judge
+    _ = judge_fn  # supervisor graph does not use score-based sufficiency
     graph = StateGraph(F1TurnState)
     graph.add_node("retrieve", _node_retrieve)
-    graph.add_node("sufficiency", _make_node_sufficiency(judge))
-    graph.add_node("tavily", _node_tavily)
-    graph.add_node("rag_synthesize", _node_rag_synthesize)
-    graph.add_node("web_synthesize", _node_web_synthesize)
+    graph.add_node("agent1_rag", _node_agent1_rag)
+    graph.add_node("supervisor", _node_supervisor)
+    graph.add_node("tavily_search", _node_tavily_search)
+    graph.add_node("agent1_web", _node_agent1_web)
+    graph.add_node("finalize_accept", _node_finalize_accept)
+    graph.add_node("finalize_fail", _node_finalize_fail)
     graph.add_edge(START, "retrieve")
-    graph.add_edge("retrieve", "sufficiency")
+    graph.add_edge("retrieve", "agent1_rag")
+    graph.add_edge("agent1_rag", "supervisor")
     graph.add_conditional_edges(
-        "sufficiency",
-        _route_after_sufficiency,
-        {"tavily": "tavily", "rag_synthesize": "rag_synthesize"},
+        "supervisor",
+        _route_after_supervisor,
+        {
+            "finalize_accept": "finalize_accept",
+            "finalize_fail": "finalize_fail",
+            "tavily_search": "tavily_search",
+        },
     )
     graph.add_conditional_edges(
-        "tavily",
+        "tavily_search",
         _route_after_tavily,
-        {"web_synthesize": "web_synthesize", END: END},
+        {"agent1_web": "agent1_web", END: END},
     )
-    graph.add_edge("rag_synthesize", END)
-    graph.add_edge("web_synthesize", END)
+    graph.add_edge("agent1_web", "supervisor")
+    graph.add_edge("finalize_accept", END)
+    graph.add_edge("finalize_fail", END)
     return graph.compile()
 
 
 def run_f1_turn_sync(state: F1TurnState) -> F1TurnState:
-    merged: F1TurnState = {**_empty_f1_state(), **state}
-    return cast(
-        F1TurnState,
-        build_compiled_graph(judge_fn=gigachat_judge_rag_sufficient).invoke(
-            merged,
-            config={"recursion_limit": 10},
-        ),
-    )
+    base = _empty_f1_state()
+    merged: F1TurnState = {**base, **state}
+    out = build_compiled_graph().invoke(merged, config={"recursion_limit": 25})
+    final = cast(F1TurnState, out)
+    if (
+        final.get("terminal_status") == "failed"
+        and final.get("error_code") == "WEB_SEARCH_UNAVAILABLE"
+        and not (final.get("out_message") or "").strip()
+    ):
+        return cast(
+            F1TurnState,
+            {
+                **final,
+                "out_message": WEB_SEARCH_UNAVAILABLE_MESSAGE_RU,
+            },
+        )
+    return final

@@ -5,12 +5,12 @@ from src.answer.gigachat_rag import (
     GIGACHAT_TEMPLATE_FALLBACK_DISCLOSURE_RU,
     GigachatRUSynthesisResult,
 )
-from src.answer.russian_qna import build_sources_block_ru_from_evidence, qna_confidence_from_evidence
+from src.answer.russian_qna import build_sources_block_ru_from_evidence
 from src.models.api_contracts import AnswerSection, StructuredRUAnswer
 from src.search.messages_ru import WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
 
 
-def test_success_includes_structured_answer_and_confidence(client, monkeypatch):
+def test_success_includes_structured_answer_without_confidence_field(client, monkeypatch):
     start = client.post("/start_chat", json={"access_code": "ABC123"})
     sid = start.json()["session_id"]
     session = client.app.state.session_store.get(sid)
@@ -28,6 +28,7 @@ def test_success_includes_structured_answer_and_confidence(client, monkeypatch):
             {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
         ],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
 
     def fake_hist(*, evidence, user_question):
         block, cc = build_sources_block_ru_from_evidence(evidence)
@@ -38,7 +39,6 @@ def test_success_includes_structured_answer_and_confidence(client, monkeypatch):
                 sources_block_ru=block,
                 citation_count=cc,
             ),
-            confidence=qna_confidence_from_evidence(evidence),
         )
 
     monkeypatch.setattr(f1g, "gigachat_synthesize_historical", fake_hist)
@@ -48,15 +48,12 @@ def test_success_includes_structured_answer_and_confidence(client, monkeypatch):
     payload = response.json()
     assert payload["status"] == "ready"
     assert "structured_answer" in payload["details"]
-    assert "confidence" in payload["details"]
-    assert payload["details"]["confidence"]["tier_ru"] == "высокая"
-    assert payload["details"]["confidence"]["score"] == 0.9
+    assert "confidence" not in payload["details"]
     assert payload["details"]["synthesis"]["route"] == GIGACHAT_SUCCESS_ROUTE
     sections = payload["details"]["structured_answer"]["sections"]
     assert isinstance(sections, list) and len(sections) >= 1
     assert sections[0]["heading"] == "Сводка"
     assert "Уверенность:" in payload["message"] or "мок" in payload["message"]
-    assert payload["details"]["confidence"]["tier_ru"] in payload["message"]
     block = payload["details"]["structured_answer"]["sources_block_ru"]
     assert "[1]" in block
     assert "f1db:test-src" in block
@@ -76,6 +73,19 @@ def test_no_evidence_yields_web_search_unavailable_without_tavily_key(client, mo
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
     monkeypatch.setattr(f1g, "retrieve_historical_context", lambda *_args, **_kwargs: [])
     monkeypatch.setattr(f1g, "gigachat_author_tavily_query", lambda **_: "q")
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: False)
+    monkeypatch.setattr(
+        f1g,
+        "gigachat_synthesize_historical",
+        lambda **k: GigachatRUSynthesisResult(
+            message="stub",
+            structured_answer=StructuredRUAnswer(
+                sections=[AnswerSection(heading="Сводка", body="b")],
+                sources_block_ru="Источники:",
+                citation_count=0,
+            ),
+        ),
+    )
 
     response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
     assert response.status_code == 200
@@ -106,6 +116,7 @@ def test_citation_order_matches_evidence_order(client, monkeypatch):
             {"source_id": "f1db:second", "snippet": "Second chunk text here.", "score": 0.72},
         ],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
 
     def fake_hist(*, evidence, user_question):
         block, cc = build_sources_block_ru_from_evidence(evidence)
@@ -116,7 +127,6 @@ def test_citation_order_matches_evidence_order(client, monkeypatch):
                 sources_block_ru=block,
                 citation_count=cc,
             ),
-            confidence=qna_confidence_from_evidence(evidence),
         )
 
     monkeypatch.setattr(f1g, "gigachat_synthesize_historical", fake_hist)
@@ -155,6 +165,7 @@ def test_historical_template_fallback_includes_disclosure(client, monkeypatch):
             {"source_id": "f1db:test-src", "snippet": "Тестовый отрывок про гонку.", "score": 0.9},
         ],
     )
+    monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
     monkeypatch.setattr(
         f1g,
         "gigachat_synthesize_historical",
