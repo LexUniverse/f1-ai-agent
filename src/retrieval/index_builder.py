@@ -1,8 +1,10 @@
-import os
 from pathlib import Path
 from typing import Any
 
-from src.retrieval.embeddings import get_embedding_function
+import chromadb
+from chromadb.errors import NotFoundError
+
+from src.retrieval.embeddings import get_embedding_function, get_embedding_model_name
 from src.retrieval.season_summary_corpus import build_season_summary_documents, write_summary_artifacts
 
 # Small CSV set consumed inside season_summary_corpus (not row-wise index):
@@ -14,13 +16,14 @@ UPSERT_BATCH_SIZE = 250
 
 
 def _get_collection(collection_name: str):
-    import chromadb
-
     client = chromadb.PersistentClient(path=".chroma")
-    return client.get_or_create_collection(
-        name=collection_name,
-        embedding_function=get_embedding_function(),
-    )
+    try:
+        return client.get_collection(name=collection_name, embedding_function=None)
+    except NotFoundError:
+        return client.get_or_create_collection(
+            name=collection_name,
+            embedding_function=get_embedding_function(),
+        )
 
 
 def build_historical_index(
@@ -57,7 +60,7 @@ def build_historical_index(
             metadatas=metadatas[start:end],
         )
 
-    emb_label = "chromadb_default" if os.environ.get("F1_CHROMA_DEFAULT_EMBEDDINGS", "").strip() in ("1", "true", "yes") else os.environ.get("F1_EMBEDDING_MODEL", "ai-forever/ru-en-RoSBERTa")
+    emb_label = get_embedding_model_name()
     out: dict[str, Any] = {
         "dataset": "f1db",
         "collection_name": collection_name,

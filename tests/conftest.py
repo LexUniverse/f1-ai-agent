@@ -18,8 +18,8 @@ from src.sessions.store import SessionStore
 
 @pytest.fixture(autouse=True)
 def reset_state():
-    # Fast deterministic Chroma embeddings in tests (production uses F1_EMBEDDING_MODEL / RoSBERTa).
-    os.environ["F1_CHROMA_DEFAULT_EMBEDDINGS"] = "1"
+    # Same embedding model as production / .env when tests run without dotenv.
+    os.environ.setdefault("F1_EMBEDDING_MODEL", "ai-forever/ru-en-RoSBERTa")
     os.environ["AUTH_ALLOWLIST_CODES"] = "ABC123,XYZ789"
     app.state.session_store = SessionStore()
     app.state.auth_service = AuthService(limiter=AuthLimiter(max_failures=5, window_seconds=300, cooldown_seconds=600))

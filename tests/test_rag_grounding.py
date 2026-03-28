@@ -31,8 +31,11 @@ def _retrieve_with_boosted_scores(
     *,
     top_k: int = 5,
     min_score: float = 0.25,
+    year_hint: int | None = None,
 ):
-    hits = retrieve_historical_context(query, canonical_entity_ids, top_k=top_k, min_score=0.0)
+    hits = retrieve_historical_context(
+        query, canonical_entity_ids, top_k=top_k, min_score=0.0, year_hint=year_hint
+    )
     out: list[dict] = []
     for h in hits:
         hh = dict(h)

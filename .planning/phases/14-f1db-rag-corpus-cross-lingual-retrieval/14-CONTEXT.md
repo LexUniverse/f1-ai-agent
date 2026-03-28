@@ -16,7 +16,7 @@
    - на каждый Гран-при: страна, год, официальное имя, **итог гонки** (подиум), строка «идентификаторы для поиска» (en-имена GP, slug, год, раунд).
 3. **Эмбеддинги:** `ai-forever/ru-en-RoSBERTa` через Chroma `SentenceTransformerEmbeddingFunction`; **тот же** бэкенд при индексации и при запросе.
 4. **Retrieval:** только векторный поиск по **исходному русскому вопросу** пользователя (в графе); **нет** `canonical_entity_id` в `where`; **удалён** `alias_resolver` / `resolve_entities`.
-5. **Тесты:** `F1_CHROMA_DEFAULT_EMBEDDINGS=1` в `conftest` для скорости; прод-индекс собирать **без** этой переменной.
+5. **Тесты и прод:** одна модель — `F1_EMBEDDING_MODEL` (дефолт в коде `ai-forever/ru-en-RoSBERTa`); `conftest` делает `setdefault` на тот же дефолт.
 
 **Superseded (14-01)**
 

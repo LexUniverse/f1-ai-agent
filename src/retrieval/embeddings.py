@@ -1,16 +1,19 @@
-"""Chroma embedding backend (production: ru-en-RoSBERTa; tests may override via env)."""
+"""Chroma embedding backend: `F1_EMBEDDING_MODEL` (sentence-transformers), default ru-en-RoSBERTa."""
 
 from __future__ import annotations
 
 import os
+
+_DEFAULT_MODEL = "ai-forever/ru-en-RoSBERTa"
+
+
+def get_embedding_model_name() -> str:
+    name = (os.environ.get("F1_EMBEDDING_MODEL") or _DEFAULT_MODEL).strip()
+    return name or _DEFAULT_MODEL
 
 
 def get_embedding_function():
     """Return a Chroma EmbeddingFunction. Same instance semantics as Chroma expects per process."""
     from chromadb.utils import embedding_functions
 
-    if os.environ.get("F1_CHROMA_DEFAULT_EMBEDDINGS", "").strip() in ("1", "true", "yes"):
-        return embedding_functions.DefaultEmbeddingFunction()
-
-    model = os.environ.get("F1_EMBEDDING_MODEL", "ai-forever/ru-en-RoSBERTa").strip()
-    return embedding_functions.SentenceTransformerEmbeddingFunction(model_name=model)
+    return embedding_functions.SentenceTransformerEmbeddingFunction(model_name=get_embedding_model_name())

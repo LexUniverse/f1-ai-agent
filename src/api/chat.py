@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from fastapi import APIRouter, Depends, Header, Request
 
@@ -25,6 +26,30 @@ from src.sessions.store import SessionStore
 router = APIRouter()
 
 PROCESS_CALLS = {"count": 0}
+
+logger = logging.getLogger(__name__)
+
+
+def _coerce_evidence_list(raw: list | None) -> list[EvidenceItem]:
+    """LangGraph возвращает evidence как list[dict] после сериализации — приводим к EvidenceItem."""
+    if not raw:
+        return []
+    out: list[EvidenceItem] = []
+    for item in raw:
+        if isinstance(item, EvidenceItem):
+            ev = item.model_copy(deep=True)
+        elif isinstance(item, dict):
+            try:
+                ev = EvidenceItem.model_validate(item)
+            except Exception:
+                logger.warning("skip invalid evidence row: %s", item)
+                continue
+        else:
+            logger.warning("skip evidence item of type %s", type(item).__name__)
+            continue
+        ev.used_in_answer = True
+        out.append(ev)
+    return out
 
 
 def process_chat_message() -> str:
@@ -146,9 +171,7 @@ async def next_message(request: Request, _session=Depends(_session_dependency)):
                 details={"code": "WEB_SEARCH_UNAVAILABLE", "evidence": []},
             )
 
-        evidence = final.get("evidence") or []
-        for item in evidence:
-            item.used_in_answer = True
+        evidence = _coerce_evidence_list(final.get("evidence"))
 
         out_details = final.get("out_details") or {}
         synthesis_raw = out_details.get("synthesis")
@@ -167,11 +190,28 @@ async def next_message(request: Request, _session=Depends(_session_dependency)):
         )
 
         store.set_status(_session.session_id, "ready", None)
+        out_msg = (final.get("out_message") or "").strip()
+        if not out_msg:
+            logger.warning(
+                "empty out_message after graph session=%s route=%s evidence_count=%s",
+                _session.session_id,
+                route,
+                len(evidence),
+            )
+            out_msg = (
+                "Ответ не сформирован (пустая строка). См. логи сервера или проверьте GIGACHAT_CREDENTIALS."
+            )
+
         return NextMessageResponse(
-            message=final.get("out_message") or "",
+            message=out_msg,
             status="ready",
             details=details,
         )
     except Exception:
+        logger.exception("next_message failed session_id=%s", getattr(_session, "session_id", "?"))
         store.set_status(_session.session_id, "failed", "RETRIEVAL_FAILED")
-        return NextMessageResponse(message="", status="failed", details={"code": "RETRIEVAL_FAILED", "evidence": []})
+        return NextMessageResponse(
+            message="Ошибка при обработке запроса (RETRIEVAL_FAILED). Подробности в логах API.",
+            status="failed",
+            details={"code": "RETRIEVAL_FAILED", "evidence": []},
+        )

@@ -23,7 +23,6 @@ from src.answer.gigachat_rag import (
     gigachat_synthesize_from_web_results,
     gigachat_synthesize_historical,
 )
-from src.graph.agent_trace import agent_trace
 from src.graph.page_fetch import fetch_url_text_plain
 from src.answer.russian_qna import (
     build_sources_block_ru_from_evidence,
@@ -33,6 +32,7 @@ from src.answer.russian_qna import (
 from src.graph.tavily_tool import TavilyConfigError, run_tavily_search_once
 from src.models.api_contracts import AnswerSection, EvidenceItem, StructuredRUAnswer
 from src.retrieval.evidence import format_evidence
+from src.retrieval.query_normalize import extract_year_int_from_query
 from src.retrieval.retriever import retrieve_historical_context
 from src.search.messages_ru import UNABLE_TO_ANSWER_SUPERVISOR_RU, WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
 
@@ -89,16 +89,16 @@ def _empty_f1_state() -> F1TurnState:
 
 def _node_retrieve(state: F1TurnState) -> dict[str, Any]:
     q = (state.get("user_question") or "").strip()
+    year_hint = extract_year_int_from_query(q)
     hits = retrieve_historical_context(
         q,
         [],
         top_k=10,
         min_score=0.25,
+        year_hint=year_hint,
     )
     top_score = max((float(h["score"]) for h in hits), default=0.0)
     evidence = format_evidence(hits, state.get("entity_tags") or [])
-    preview = ", ".join(f"{h.get('source_id')}({h.get('score', 0):.2f})" for h in hits[:5])
-    agent_trace("retrieve", f"hits={len(hits)} top_score={top_score:.3f} | {preview}")
     return {
         "retrieval_hits": hits,
         "top_score": top_score,
@@ -155,13 +155,8 @@ def _web_sources_fallback(web_results: list[dict[str, Any]]) -> tuple[str, int]:
 
 def _node_agent1_rag(state: F1TurnState) -> dict[str, Any]:
     evidence = state.get("evidence") or []
-    agent_trace(
-        "agent1_rag",
-        f"evidence={len(evidence)} ctx_lens={[len((e.context_for_llm or e.snippet or '')) for e in evidence[:5]]}",
-    )
     try:
         result = gigachat_synthesize_historical(evidence=evidence, user_question=state["user_question"])
-        agent_trace("agent1_rag", f"→ GigaChat OK message_preview={(result.message or '')[:180]!r}")
         return {
             "candidate_message": result.message,
             "candidate_structured": result.structured_answer.model_dump(),
@@ -175,7 +170,6 @@ def _node_agent1_rag(state: F1TurnState) -> dict[str, Any]:
         tier = tier_ru_from_max_score(max_sc)
         base_message = f"Историческая сводка: {summary}. Уверенность: {tier}."
         message = append_fallback_disclosure_ru(base_message)
-        agent_trace("agent1_rag", f"→ template fallback ({type(exc).__name__}) preview={message[:120]!r}")
         return {
             "candidate_message": message,
             "candidate_structured": structured.model_dump(),
@@ -187,11 +181,7 @@ def _node_agent1_rag(state: F1TurnState) -> dict[str, Any]:
 def _node_supervisor(state: F1TurnState) -> dict[str, Any]:
     accept = gigachat_supervisor_accept_answer(
         user_question=state["user_question"],
-        candidate_answer=state["candidate_message"],
-    )
-    agent_trace(
-        "supervisor",
-        f"accept={accept} candidate_preview={(state.get('candidate_message') or '')[:200]!r}",
+        candidate_answer=state.get("candidate_message") or "",
     )
     return {"supervisor_accept": accept}
 
@@ -216,14 +206,12 @@ def _node_tavily_search(state: F1TurnState) -> dict[str, Any]:
     try:
         web = run_tavily_search_once(q)
         if not web:
-            agent_trace("tavily", f"no results or disabled, query={q[:80]!r} → fallback RAG-only")
             return {
                 "tavily_queries": prev_q + [q],
                 "tavily_blocked": True,
             }
         merged = list(state.get("web_results") or [])
         merged.extend(web)
-        agent_trace("tavily", f"results={len(web)} query={q[:80]!r}")
         return {
             "tavily_queries": prev_q + [q],
             "web_search_rounds": wr + 1,
@@ -232,14 +220,12 @@ def _node_tavily_search(state: F1TurnState) -> dict[str, Any]:
             "error_code": None,
             "tavily_blocked": False,
         }
-    except (TavilyConfigError, requests.RequestException, OSError, RuntimeError, ValueError) as exc:
-        agent_trace("tavily", f"error {type(exc).__name__}: {exc!s} → fallback RAG-only")
+    except (TavilyConfigError, requests.RequestException, OSError, RuntimeError, ValueError):
         return {
             "tavily_queries": prev_q + [q],
             "tavily_blocked": True,
         }
-    except Exception as exc:
-        agent_trace("tavily", f"error {type(exc).__name__}: {exc!s} → fallback RAG-only")
+    except Exception:
         return {
             "tavily_queries": prev_q + [q],
             "tavily_blocked": True,
@@ -265,14 +251,12 @@ def _node_finalize_rag_no_tavily(state: F1TurnState) -> dict[str, Any]:
     """После отклонения RAG супервизором веб недоступен — повторный синтез только по полным чанкам."""
     evidence = state.get("evidence") or []
     uq = state["user_question"]
-    agent_trace("finalize_rag_no_tavily", f"re-synthesize RAG-only evidence={len(evidence)}")
     hint = (
         "[Поиск в интернете недоступен. Ответь только по контексту ниже. "
         "Если вопрос про победителя гонки и в контексте есть «Итог гонки» / место 1 для нужного Гран-при — назови пилота и команду.]\n"
     )
     try:
         result = gigachat_synthesize_historical(evidence=evidence, user_question=hint + uq)
-        agent_trace("finalize_rag_no_tavily", f"→ GigaChat OK {(result.message or '')[:200]!r}")
         return {
             "candidate_message": result.message,
             "candidate_structured": result.structured_answer.model_dump(),
@@ -294,7 +278,6 @@ def _node_finalize_rag_no_tavily(state: F1TurnState) -> dict[str, Any]:
         msg = append_fallback_disclosure_ru(
             f"Кратко по базе (шаблон, GigaChat: {type(exc).__name__}). См. раздел ниже."
         )
-        agent_trace("finalize_rag_no_tavily", f"→ template ({type(exc).__name__})")
         return {
             "candidate_message": msg,
             "candidate_structured": structured.model_dump(),
@@ -344,7 +327,6 @@ def _node_agent1_web(state: F1TurnState) -> dict[str, Any]:
             web_results=web,
             fetched_page_excerpt=excerpt,
         )
-        agent_trace("agent1_web", f"→ GigaChat OK {(result.message or '')[:200]!r}")
         return {
             "candidate_message": result.message,
             "candidate_structured": result.structured_answer.model_dump(),
@@ -378,15 +360,21 @@ def _node_finalize_accept(state: F1TurnState) -> dict[str, Any]:
     if isinstance(meta, dict):
         synthesis.update(meta)
     details: dict[str, Any] = {
-        "structured_answer": state["candidate_structured"],
+        "structured_answer": state.get("candidate_structured") or {},
         "synthesis": synthesis,
         "provenance": _build_provenance_snapshot(state, synthesis),
     }
     if web_used:
         details["tavily_queries"] = list(state.get("tavily_queries") or [])
         details["web_results"] = list(state.get("web_results") or [])
+    raw_msg = (state.get("candidate_message") or "").strip()
+    if not raw_msg:
+        raw_msg = (
+            "Пустой ответ от модели. Проверьте GIGACHAT_CREDENTIALS и повторите вопрос; "
+            "если проблема сохраняется, переформулируйте запрос."
+        )
     return {
-        "out_message": state["candidate_message"],
+        "out_message": raw_msg,
         "out_details": details,
         "terminal_status": "ready",
     }

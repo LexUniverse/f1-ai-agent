@@ -2,7 +2,7 @@ import pytest
 
 from src.models.api_contracts import EvidenceItem
 from src.retrieval.evidence import format_evidence
-from src.retrieval.query_normalize import normalize_retrieval_query
+from src.retrieval.query_normalize import extract_year_int_from_query, normalize_retrieval_query
 from src.retrieval.retriever import DEFAULT_MIN_SCORE, DEFAULT_TOP_K
 
 
@@ -54,3 +54,11 @@ def test_normalize_retrieval_query_empty():
     nq, cids, tags = normalize_retrieval_query("   ")
     assert nq == ""
     assert cids == []
+
+
+def test_extract_year_int_from_query_monaco_2000():
+    assert extract_year_int_from_query("Кто выиграл Гран-при Монако 2000?") == 2000
+
+
+def test_extract_year_int_from_query_ignores_garbage_century():
+    assert extract_year_int_from_query("сезон без года") is None

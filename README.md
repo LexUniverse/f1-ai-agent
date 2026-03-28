@@ -52,10 +52,10 @@ Docker для локального запуска **не обязателен**.
 | **`GIGACHAT_MODEL`** | Нет | Имя модели (по умолчанию `GigaChat`) | Документация GigaChat |
 | **`GIGACHAT_TIMEOUT`**, **`GIGACHAT_MAX_RETRIES`**, **`GIGACHAT_VERIFY_SSL_CERTS`** | Нет | Тонкая настройка клиента | См. `.env.example` |
 | **`TAVILY_TIMEOUT`**, **`TAVILY_MAX_RESULTS`** | Нет | Таймаут и число результатов Tavily | `src/graph/tavily_tool.py` |
-| **`F1_EMBEDDING_MODEL`** | Нет | Имя модели для Chroma (`sentence-transformers`) | По умолчанию `ai-forever/ru-en-RoSBERTa` |
-| **`F1_CHROMA_DEFAULT_EMBEDDINGS`** | Нет | Если `1` — встроенный эмбеддер Chroma (только для отладки; **не совпадает** с прод-индексом) | Тесты выставляют сами |
-| **`F1_LOG_AGENT_TRACE`** | Нет | Если `1` — в **stderr** трассировка retrieve / agent1_rag / supervisor / tavily / web (короткие превью) | Отладка промптов |
+| **`F1_EMBEDDING_MODEL`** | Нет | Модель Chroma (`sentence-transformers`): индексация и запросы | По умолчанию `ai-forever/ru-en-RoSBERTa` |
 | **`F1_LOG_SUPERVISOR_DECISIONS`** | Нет | Логи супервизора через `logging` | См. `gigachat_rag.py` |
+
+При чтении уже собранной коллекции Chroma использует сохранённую при индексации конфигурацию эмбеддингов; новая коллекция создаётся с **`F1_EMBEDDING_MODEL`** из `.env` (или тем же дефолтом в коде).
 
 Без **`TAVILY_API_KEY`** при нехватке RAG ответ завершится ошибкой **`WEB_SEARCH_UNAVAILABLE`** (см. `src/search/messages_ru.py`).
 
@@ -106,6 +106,8 @@ python3 -c "from src.retrieval.index_builder import build_historical_index; prin
 `python3 scripts/build_f1_season_summaries.py --dump-jsonl /tmp/f1_chunks.jsonl`
 
 Индекс пишется в **`.chroma/`**; переиндексация **обязательна** после смены модели эмбеддингов.
+
+Если в UI в блоке «Контекст (RAG)» **всегда один и тот же чанк** (или ответы не опираются на корпус), проверьте объём коллекции: после полной сборки в Chroma должны быть **сотни** документов, а не один. Иначе перезапустите `build_f1_season_summaries.py` из корня проекта.
 
 ---
 

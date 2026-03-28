@@ -280,16 +280,12 @@ def gigachat_supervisor_accept_answer(*, user_question: str, candidate_answer: s
     """
     user = f"Вопрос пользователя:\n{user_question}\n\nПредлагаемый ответ ассистента:\n{candidate_answer}"
     log_decisions = _env_truthy("F1_LOG_SUPERVISOR_DECISIONS")
-    log_trace = _env_truthy("F1_LOG_AGENT_TRACE")
     log = logging.getLogger(__name__)
 
-    def _log_accept(accept: bool, raw: str | None = None) -> None:
+    def _log_accept(accept: bool) -> None:
         if log_decisions:
             preview = (candidate_answer or "")[:120]
             log.info("supervisor_decision accept=%s candidate_preview=%r", accept, preview)
-        if log_trace:
-            extra = f" raw={raw[:200]!r}…" if raw and len(raw) > 200 else (f" raw={raw!r}" if raw else "")
-            print(f"[F1 trace] supervisor → accept={accept}{extra}", flush=True)
 
     try:
         model = _model_name()
@@ -304,7 +300,7 @@ def gigachat_supervisor_accept_answer(*, user_question: str, candidate_answer: s
                 data = json.loads(_strip_json_fence(content))
                 parsed = _SupervisorAcceptPayload.model_validate(data)
                 accept = bool(parsed.accept)
-                _log_accept(accept, content)
+                _log_accept(accept)
                 return accept
             except (json.JSONDecodeError, ValidationError) as e:
                 messages.append(Messages(role=MessagesRole.ASSISTANT, content=content))
@@ -323,14 +319,12 @@ def gigachat_supervisor_accept_answer(*, user_question: str, candidate_answer: s
                     data2 = json.loads(_strip_json_fence(content2))
                     parsed2 = _SupervisorAcceptPayload.model_validate(data2)
                     accept = bool(parsed2.accept)
-                    _log_accept(accept, content2)
+                    _log_accept(accept)
                     return accept
                 except (json.JSONDecodeError, ValidationError):
-                    _log_accept(False, None)
+                    _log_accept(False)
                     return False
     except Exception:
-        if _env_truthy("F1_LOG_AGENT_TRACE"):
-            print("[F1 trace] supervisor → GigaChat error, default reject", flush=True)
         return False
 
 
@@ -397,8 +391,6 @@ def gigachat_synthesize_historical(*, evidence: list[EvidenceItem], user_questio
     ]
     user = f"Вопрос пользователя: {user_question}\n\nКонтекст:\n" + "\n".join(lines)
     msg, sections = _chat_completion_json(system=_SYSTEM_HISTORICAL, user=user)
-    if _env_truthy("F1_LOG_AGENT_TRACE"):
-        print(f"[F1 trace] gigachat_synthesize_historical ← message_preview={(msg or '')[:200]!r}", flush=True)
     sources_block_ru, citation_count = build_sources_block_ru_from_evidence(evidence)
     structured = StructuredRUAnswer(
         sections=sections,
