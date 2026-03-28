@@ -121,6 +121,6 @@ Plans:
 | 13. Streamlit unified provenance & chat UX | 1/1 | Complete | 2026-03-28 |
 | 14. F1DB RAG corpus & cross-lingual retrieval | 0/1 planned | Complete    | 2026-03-28 |
 | 15. Supervisor & multi-URL web grounding | — | **Skipped** | — |
-| 17. TimeAPI & FastF1 schedule services | 0/2 | Planned (v1.6) | — |
+| 17. TimeAPI & FastF1 schedule services | 2/2 | Planned (v1.6) | — |
 | 18. Worker time & schedule tools | 0/TBD | Planned (v1.6) | — |
 | 19. README, README_DETAILED & smokes | 0/TBD | Planned (v1.6) | — |
