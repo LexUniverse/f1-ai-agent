@@ -8,18 +8,18 @@ Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know
 
 The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
-## Current Milestone: v1.2 GigaChat supervisor — RAG sufficiency → Tavily (remove F1 API)
+## Current Milestone: v1.3 — Web answer fidelity & Streamlit UX
 
-**Goal:** Replace the **f1api.dev** live branch with **LangGraph-orchestrated** flows: **GigaChat** supervises **RAG** and, when evidence is **empty or insufficient**, uses **LangChain + Tavily Search** (LLM-authored query → results → synthesis). Ship **operator documentation** (`README`) for setup, run, and **all `.env` keys with acquisition links**, plus **tests that validate GigaChat and configured API keys** (smoke/integration pattern).
+**Goal:** Fix the **Tavily branch** so the user sees a **direct Russian answer to their original question**, synthesized from search snippets (not an echo of the search query or link-only noise). Align **Streamlit** with operator expectations: **chronological chat** (newest turns next to the composer), **message text first** with **sources in a collapsible block**, and **no confidence UI** until scores are meaningful. Ship **structured web provenance** in the API, plus **README / `.env` catalog** and **opt-in credential smokes** carried forward from v1.2.
 
 **Target features:**
 
-- **Supervisor graph:** LangGraph with **GigaChat**-centric routing; **RAG node** + **tool node** (Tavily); parallel fan-out where beneficial.
-- **Sufficiency:** Explicit evaluation after retrieval (scores and/or LLM judge) before spending Tavily budget.
-- **Tavily path:** No dedicated F1 REST client in the answer pipeline; web results feed structured RU answers with **attributed URLs**.
-- **Docs & quality:** Full **README** (deploy locally, run API + Streamlit, `.env` catalog); **pytest** coverage for **live key smoke** (opt-in marker) and GigaChat ping.
+- **Answer pipeline:** Unchanged order at a high level — **RAG first**; **Tavily only** when RAG is judged insufficient; then **synthesis must use snippets to answer the user’s question** (prompts, validation, and tests for regressions like «кто победил в сезоне 2021»).
+- **API contract:** **`details.web`** (query, URLs, snippets/metadata) when search contributed; Streamlit consumes it for display logic.
+- **Streamlit:** Append turns in **time order**; default view = **assistant `message` only**; **источники** in **`st.expander`**; **remove** уверенность from the UI.
+- **Docs & quality:** **README** + **`.env.example`** completeness; **pytest** smokes for live keys (marker/opt-in), default CI offline.
 
-**Key context:** v1.1 delivered GigaChat RAG + Streamlit + local runbook; v1.2 is an **architecture shift** for freshness and gaps while keeping async session contracts and Russian structured responses.
+**Key context:** v1.2 Phase 8 shipped LangGraph + Tavily and removed f1api from the answer path. Manual testing showed **`gigachat_web`** sometimes returning non-answers (question echo / search-oriented text). Streamlit currently **`insert(0, …)`** messages, so **new replies appear at the top**; confidence is a **constant middle tier** in the web path — misleading in UI.
 
 ## Requirements
 
@@ -34,16 +34,18 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ Streamlit operator UI (`/start_chat` with question, status polling, `/next_message`) showing message, confidence, citations, live and synthesis metadata; documented local **API + Streamlit** run (`python api.py`, `streamlit run streamlit_app.py`) without Docker — validated in Phase 07 (streamlit-ui-local-run)
 - ✓ **LangGraph** turn orchestration (**RAG** + **Tavily** via LangChain), **GigaChat** sufficiency judge and synthesis, **`asyncio.to_thread`** from async `/next_message`; **f1api.dev** removed from answer path; **`WEB_SEARCH_UNAVAILABLE`** fixed Russian copy — validated in Phase 08 (langgraph-supervisor-tavily-tooling)
 
-### Active (v1.2)
+### Active (v1.3)
 
-- **README:** setup, run, **`.env` variables** and where to obtain keys (GigaChat, Tavily, etc.).
-- **Tests:** smoke/integration checks that **GigaChat** and **required `.env` keys** work when enabled.
-- **WEB-01** structured **`details.web`** and Streamlit web panels (Phase 9).
+- **SRCH-03 / synthesis:** Tavily path answers the **original user question** in Russian using returned page content; no query-echo or sources-only as the primary reply.
+- **WEB-01:** Structured **`details.web`** when search is used; clients can show provenance separately from RAG citations.
+- **UI-04 — UI-06:** Streamlit chronological layout; primary text + expandable sources; confidence hidden in UI.
+- **DOC-01 / TST-01:** README + `.env` acquisition links; opt-in live smokes.
 
 ### Out of Scope
 
 - Voice mode — not required for first release.
 - Advanced personalization — defer until core QA reliability is proven.
+- **Recalibrated confidence scores** for the web path — deferred; UI hides confidence until a meaningful signal exists.
 
 ## Context
 
@@ -55,7 +57,7 @@ The target architecture is a **LangGraph** supervisor with delegated nodes (**RA
 - **Latency**: Typical response time up to 10 seconds for standard non-heavy requests.
 - **Language**: Russian user interaction with Russian+English handling for data grounding.
 - **Auth**: Access controlled via per-user code allowlist.
-- **Deployment (v1.2):** Local run — API + Streamlit; Docker not a milestone goal unless scoped later.
+- **Deployment:** Local run — API + Streamlit; Docker not a milestone goal unless scoped later.
 
 ## Key Decisions
 
@@ -64,10 +66,9 @@ The target architecture is a **LangGraph** supervisor with delegated nodes (**RA
 | RAG-first, web-second response policy (v1.2) | Stabilize quality; Tavily only when RAG insufficient | Replace f1api live branch with LangGraph gate + Tavily tool. |
 | Explicit degraded-mode when web search fails | Prevent silent failures | Reuse pattern from Phase 05; message/RU copy updated for Tavily timeouts. |
 | Per-user code allowlist authentication for v1 | Lightweight access control with minimal implementation overhead | Delivered Phase 01; unchanged. |
-| RU-first UX with RU/EN support | Users are Russian-speaking while source data is primarily English | — Pending |
-| v1.1: GigaChat classic RAG + template fallback | LLM reads retrieved chunks; outages must not fabricate silently | Primary synthesis in `gigachat_rag.py` (replaces `russian_qna.py`); template path on GigaChat outage. |
-| v1.1: No Docker | User—v1.1 delivery | Shipped RUN-01. |
-| v1.2: Tavily + LangGraph supervisor | User request; remove F1 REST dependency | GigaChat core; LangChain Tavily tool; README + env tests. |
+| RU-first UX with RU/EN support | Users are Russian-speaking while source data is primarily English | — |
+| v1.3: Web synthesis must answer the user’s question | Operator testing showed bad `gigachat_web` outputs | Tighten prompts / post-checks + regression tests. |
+| v1.3: Hide confidence in Streamlit | Web path used a flat confidence; misleading | UI omits tier/score until recalibration. |
 
 ## Evolution
 
@@ -87,4 +88,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — Phase 8 complete (LangGraph + Tavily; f1api removed from `/next_message`)*
+*Last updated: 2026-03-28 — Milestone v1.3 started (web fidelity + Streamlit UX + docs/smokes)*

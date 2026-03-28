@@ -14,11 +14,19 @@
 **Phases:** 6–7 (GigaChat chunk-grounded RAG + template fallback; Streamlit UI + local runbook).  
 **Outcome:** GigaChat synthesis path, operator Streamlit client, documented `python api.py` + Streamlit (no Docker).
 
+### v1.2 — GigaChat supervisor — RAG → Tavily (LangGraph)
+
+**Completed (scope delivered):** 2026-03-28  
+**Phases:** 1–8 (through LangGraph + Tavily; f1api removed from `/next_message`).  
+**Outcome:** Compiled graph, sufficiency gate, GigaChat web path, bounded search/degraded RU copy.
+
+_Note: Originally scoped README + credential smokes + WEB contract as phases 9–10; **rescoped into v1.3** as phases 9–11 with additional synthesis + Streamlit UX work._
+
 ---
 
 ## Active
 
-### v1.2 — GigaChat supervisor — RAG → Tavily (LangGraph) + README + key smokes
+### v1.3 — Web answer fidelity, Streamlit UX, docs & smokes
 
-**Started:** 2026-03-27  
-**Focus:** LangGraph supervisor (GigaChat core), RAG sufficiency gate, LangChain Tavily tool (remove f1 API path), expanded README (`.env` + key sources), pytest smokes for GigaChat and API keys.
+**Started:** 2026-03-28  
+**Focus:** Fix **Tavily → synthesis** so replies **answer the user’s original question** (not search-query echo); **`details.web`** in API; Streamlit **chronological** chat, **message first** + **expandable sources**, **no confidence** in UI; **README** / **`.env`** catalog and **opt-in pytest** smokes for GigaChat + Tavily.
