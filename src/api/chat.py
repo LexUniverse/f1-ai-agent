@@ -18,7 +18,7 @@ from src.models.api_contracts import (
     WebSearchDetails,
     WebSearchResultItem,
 )
-from src.retrieval.alias_resolver import resolve_entities
+from src.retrieval.query_normalize import normalize_retrieval_query
 from src.search.messages_ru import WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
 from src.sessions.store import SessionStore
 
@@ -129,7 +129,7 @@ async def next_message(request: Request, _session=Depends(_session_dependency)):
         )
 
     try:
-        normalized_query, canonical_entity_ids, entity_tags = resolve_entities(_session.next_message)
+        normalized_query, canonical_entity_ids, entity_tags = normalize_retrieval_query(_session.next_message)
         initial: F1TurnState = {
             "user_question": _session.next_message,
             "normalized_query": normalized_query,

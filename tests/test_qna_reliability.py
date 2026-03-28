@@ -7,7 +7,6 @@ from src.answer.gigachat_rag import (
 )
 from src.answer.russian_qna import build_sources_block_ru_from_evidence
 from src.models.api_contracts import AnswerSection, StructuredRUAnswer
-from src.search.messages_ru import WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
 
 
 def test_success_includes_structured_answer_without_confidence_field(client, monkeypatch):
@@ -18,7 +17,7 @@ def test_success_includes_structured_answer_without_confidence_field(client, mon
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
+        "src.api.chat.normalize_retrieval_query",
         lambda _query: ("q", ["driver:x"], ["driver:x"]),
     )
     monkeypatch.setattr(
@@ -59,7 +58,7 @@ def test_success_includes_structured_answer_without_confidence_field(client, mon
     assert "f1db:test-src" in block
 
 
-def test_no_evidence_yields_web_search_unavailable_without_tavily_key(client, monkeypatch):
+def test_no_evidence_tavily_blocked_still_returns_ready_without_tavily_key(client, monkeypatch):
     start = client.post("/start_chat", json={"access_code": "ABC123"})
     sid = start.json()["session_id"]
     session = client.app.state.session_store.get(sid)
@@ -67,8 +66,8 @@ def test_no_evidence_yields_web_search_unavailable_without_tavily_key(client, mo
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
-        lambda _query: ("q", ["driver:x"], ["driver:x"]),
+        "src.api.chat.normalize_retrieval_query",
+        lambda _query: ("q", [], []),
     )
     monkeypatch.delenv("TAVILY_API_KEY", raising=False)
     monkeypatch.setattr(f1g, "retrieve_historical_context", lambda *_args, **_kwargs: [])
@@ -86,15 +85,19 @@ def test_no_evidence_yields_web_search_unavailable_without_tavily_key(client, mo
             ),
         ),
     )
+    def _tavily_boom(*_a, **_k):
+        raise RuntimeError("no tavily")
+
+    monkeypatch.setattr(f1g, "run_tavily_search_once", _tavily_boom)
 
     response = client.post("/next_message", headers={"X-Session-Id": sid}, json={})
     assert response.status_code == 200
     payload = response.json()
-    assert payload["status"] == "failed"
-    assert payload["details"]["code"] == "WEB_SEARCH_UNAVAILABLE"
-    assert payload["details"]["evidence"] == []
-    assert payload["message"] == WEB_SEARCH_UNAVAILABLE_MESSAGE_RU
-    assert "structured_answer" not in payload["details"]
+    assert payload["status"] == "ready"
+    assert payload["details"]["code"] == "OK"
+    assert payload["message"] == "stub"
+    assert payload["details"]["synthesis"]["route"] == "gigachat_rag_no_web"
+    assert "structured_answer" in payload["details"]
 
 
 def test_citation_order_matches_evidence_order(client, monkeypatch):
@@ -105,7 +108,7 @@ def test_citation_order_matches_evidence_order(client, monkeypatch):
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
+        "src.api.chat.normalize_retrieval_query",
         lambda _query: ("q", ["driver:x"], ["driver:x"]),
     )
     monkeypatch.setattr(
@@ -155,7 +158,7 @@ def test_historical_template_fallback_includes_disclosure(client, monkeypatch):
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
+        "src.api.chat.normalize_retrieval_query",
         lambda _query: ("q", ["driver:x"], ["driver:x"]),
     )
     monkeypatch.setattr(

@@ -1,30 +1,61 @@
-# Research summary — v1.6 TimeAPI + FastF1 schedule tools
+# Project Research Summary
 
-**Milestone:** v1.6 — condensed from user spec + public API docs (full 4-dimension research skipped). **Execution order:** phases **17 → 18 → 19** (docs last; Phase 15 skipped).
+**Project:** F1 Assistant (GigaChat + LangGraph)  
+**Domain:** Multi-agent orchestration — RAG + web search (Tavily)  
+**Researched:** 2026-03-27  
+**Confidence:** HIGH (architecture/features); MEDIUM (exact library pins)
 
-## Stack additions
+## Executive Summary
 
-- **HTTP:** `httpx` or existing project HTTP client for `https://www.timeapi.io/api/v1/time/current/utc` and/or `.../unix` ([Swagger](https://www.timeapi.io/swagger/index.html)).
-- **Python:** `fastf1` (already common in F1 stacks; confirm in `pyproject.toml` / lockfile — add if missing).
-- **No new DB** for v1.6 unless caching schedule in-memory per process is desired (FastF1 caches to disk by default).
+v1.2 replaces the **f1api.dev** enrichment path with **Tavily** behind **LangChain tools**, orchestrated by a **LangGraph supervisor** with **GigaChat** as the core reasoning model. The user-facing async API and Streamlit client should keep **structured Russian answers**, **confidence**, and **citations**, but citations may blend **RAG chunk refs** and **web URLs**.
 
-## Feature table stakes
+Risks are **web-source hallucination**, **Tavily cost/latency**, and **async/event-loop blocking** from LLM calls — mitigate with caps, explicit URL grounding in prompts/UI, and thread offload in FastAPI.
 
-- One call returns **UTC now** for deterministic “next event” comparisons.
-- **EventSchedule** for target year; filter **race weekends** (`RoundNumber > 0`), exclude **`testing`** format unless user asks for tests.
-- **Session*DateUtc** for ordering “next session” / weekend boundaries (2018+ full fidelity).
+## Key Findings
 
-## Architecture notes
+### Recommended Stack
 
-- Implement **thin service modules** (time client, schedule resolver) bound as **LangChain `@tool`** or graph node callables; keep **secrets**: none for TimeAPI (public GET).
-- **Year selection:** default `year = pd.Timestamp(utc_now).year` with edge case: late December — next season’s first event might be next calendar year (plan should handle December → try current and next year schedule).
+Pin **langgraph** and **langchain** / **langchain-community** compatibly; use **Tavily** via LangChain’s Tavily integration; keep **gigachat** for routing, query formulation, and synthesis.
 
-## Pitfalls
+**Core technologies:**
+- **LangGraph** — supervisor + branch nodes (RAG vs tools).
+- **LangChain + community** — Tavily tool wrapper.
+- **GigaChat** — existing SDK; extend prompts for search-query generation and merged evidence.
 
-- **TimeAPI** rate limits / downtime → degraded UX (**TIME-01**).
-- **FastF1** first load can be slow (cache dir); document cache path for operators.
-- **Ergast / pre-2018** session times approximate — document in tool docstrings or operator README when v1.6 touches docs.
-- **Timezone:** compare using **UTC** everywhere; FastF1 provides `Session*DateUtc`.
+### Expected Features
 
----
-*Synthesized: 2026-03-28 — lightweight substitute for parallel project-research agents.*
+**Must have (table stakes):**
+- RAG retrieval + **explicit sufficiency evaluation** before web search.
+- Tavily path: **LLM-crafted query** → results → **RU answer** with source URLs.
+- **Remove F1 REST** from answer path.
+- **README** with `.env` keys and acquisition links; **smoke/integration tests** for keys + GigaChat.
+
+**Should have:**
+- Parallel supervisor fan-out where latency allows (classification + RAG).
+
+**Defer:**
+- Multi-query Tavily refinement loops beyond one reformulation.
+- New vector DB or second LLM vendor.
+
+### Architecture Approach
+
+FastAPI preserves sessions; **inner loop** becomes a **compiled LangGraph**: supervisor → RAG → gate → (optional Tavily) → unified synthesizer → existing response envelope. Deprecate live-specific fields in favor of **web/external** metadata where needed.
+
+**Major components:**
+1. **Supervisor** — intent + routing.
+2. **RAG node** — current Chroma/f1db pipeline.
+3. **Tool node** — Tavily via LangChain.
+4. **Answer node** — GigaChat + template fallback.
+
+### Critical Pitfalls
+
+1. Uncited or over-trusted Tavily snippets → enforce URL visibility and conservative confidence.
+2. Unbounded tool calls → cap per turn.
+3. Flaky CI on live APIs → mocks by default, opt-in integration marker.
+4. Breaking Streamlit on `details.live` → migrate schema with UI in same milestone.
+
+### Roadmap Implications
+
+- **Phase 8:** Graph skeleton, sufficiency gate, Tavily integration, remove f1api path.
+- **Phase 9:** Response schema + Streamlit alignment, reliability hardening.
+- **Phase 10:** README expansion, `.env.example`, pytest markers for integration smokes.

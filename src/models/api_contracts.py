@@ -74,6 +74,8 @@ class EvidenceItem(BaseModel):
     entity_tags: list[str]
     rank_score: float
     used_in_answer: bool = False
+    # Full chunk text for LLM synthesis (excluded from API JSON — snippets stay short for UI).
+    context_for_llm: str = Field(default="", exclude=True)
 
 
 class RetrievalArtifacts(BaseModel):

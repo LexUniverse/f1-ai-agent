@@ -4,11 +4,9 @@
 
 **v1.0–v1.2:** API, RAG, GigaChat, linear LangGraph + Tavily. **v1.3 Phase 9:** Supervisor + Agent 1, **no confidence**, **`details.web`**.
 
-**v1.4 (phases 12–13):** **Supervisor false-negative audit** (AGT-06), **one Tavily + optional single-page fetch** (AGT-07, SRCH-04), **unified API provenance** (WEB-02), **Streamlit** single expander + chronological chat (UI-04/05/06). *(Исходная идея docs/smokes перекочевала: **v1.5 Phase 16** → **v1.6 Phase 19**.)*
+**v1.4 (phases 12–13):** **Supervisor false-negative audit** (AGT-06), **one Tavily + optional single-page fetch** (AGT-07, SRCH-04), **unified API provenance** (WEB-02), **Streamlit** single expander + chronological chat (UI-04/05/06). *(Originally Phase 14 was README/smokes — moved to **v1.5 Phase 16** together with **README_DETAILED**.)*
 
-**v1.5 (closed partial, 2026-03-28):** **Phase 14** — F1DB RAG whitelist, чанки, **ru-en-RoSBERTa** на датасете из исходной БД (сделано владельцем). **Phase 15** (**AGT-08, AGT-09, SRCH-05**) — **пропущена**; в продукте остаётся цепочка **Phase 12**. Бывшая **Phase 16** (доки/smokes) перенесена в **v1.6 Phase 19**.
-
-**v1.6 (phases 17–19):** **17–18** — [TimeAPI.io](https://www.timeapi.io/swagger/index.html) + FastF1 `EventSchedule` + worker **tools** (**TIME-01, SCHED-01, TOOL-01**). **19** — **README**, **README_DETAILED.md**, smokes (**DOC-01, DOC-02, TST-01**), после времени/расписания; допускается черновая дока.
+**v1.5 (phases 14–16):** **F1DB-aligned RAG** (whitelist CSVs, better chunk text, RU query strategy без обязательного билингва в чанках), **supervisor + web loop** (супервизор «слепой» к каналу данных; **до 2** последовательных fetch’ей после выбора **двух** URL через GigaChat, если title/snippet не хватает), **operator docs** (README + **README_DETAILED.md** + smokes).
 
 > **Note:** Original **v1.3 phases 10–11** merged into v1.4 as phases **13** (UI) with **UI-06**.
 
@@ -26,10 +24,8 @@
 - [x] **Phase 12: Supervisor Reliability & Single-Pass Web** - **AGT-06, AGT-07, SRCH-04, WEB-02**: audit accept path; one Tavily per turn; URL ranking; title-first answer; optional one HTTP fetch; terminal AGT-05 after single pass; API shape for unified provenance. (completed 2026-03-28)
 - [x] **Phase 13: Streamlit Unified Provenance & Chat UX** - **UI-04, UI-05, UI-06**: chronological append; message first; **one** collapsed provenance (RAG + web + synthesis); no duplicate sources blocks. (completed 2026-03-28)
 - [x] **Phase 14: F1DB RAG Corpus & Cross-Lingual Retrieval** - **RAG-08, RAG-09**: wave **14-01** (whitelist row chunks + aliases + dual query) **completed 2026-03-28**; wave **14-02** (replan): **русские сезонные сводки** из 8 CSV, чанки overview + per-GP; **ai-forever/ru-en-RoSBERTa** для индекса и запроса; **без alias_resolver** и без фильтра по `canonical_entity_id`. (14-02 completed 2026-03-28)
-- [~] **Phase 15: Supervisor & Two-Step Web Fetch** — **SKIPPED** (2026-03-28): **AGT-08, AGT-09, SRCH-05** не делаем в этом цикле; в продукте сохраняется поведение **Phase 12** (один Tavily, до одного fetch). При необходимости вернуть — отдельный майлстоун/фаза.
-- [x] **Phase 17: TimeAPI & FastF1 schedule services** - **TIME-01, SCHED-01**: current UTC/unix client with timeout + degraded RU; `EventSchedule` next GP vs «now», session UTC fields, year rollover & ergast caveats documented. **Depends on Phase 14** (RAG baseline), **not** on skipped Phase 15. (completed 2026-03-28)
-- [ ] **Phase 18: Worker time & schedule tools** - **TOOL-01**: LangGraph/LangChain tools wired to worker; Russian-facing behavior; tool errors do not break the turn graph.
-- [ ] **Phase 19: README, README_DETAILED & Smokes** (ex-Phase 16) - **DOC-01, DOC-02, TST-01**: onboarding README; **README_DETAILED.md**; opt-in pytest smokes — **после** 17–18, допускается «черновая» дока по договорённости.
+- [ ] **Phase 15: Supervisor & Two-Step Web Fetch** - **AGT-08, AGT-09, SRCH-05**: supervisor judges **only** Q↔answer fit (**blind** to RAG/web/title); user-facing direct answer or abstention; one Tavily → GigaChat: titles/snippets enough? else pick **two** URLs by titles → **max 2** sequential fetches; title/snippet-only answers allowed.
+- [ ] **Phase 16: README, README_DETAILED & Smokes** - **DOC-01, DOC-02, TST-01**: onboarding README; **README_DETAILED.md** (per-file / module narrative); opt-in pytest smokes.
 
 ## Phase Details (v1.4 — closed)
 
@@ -54,7 +50,7 @@
 2. No stacked redundant «Источники» + raw `web` JSON for the same facts without hierarchy.
 3. Labels in **Russian** describe what each subsection is for.
 
-## Phase Details (v1.5 — closed)
+## Phase Details (v1.5 — active)
 
 ### Phase 14: F1DB RAG Corpus & Cross-Lingual Retrieval
 **Goal:** RAG returns **ground-truth** from a **small whitelist** of f1db tables for realistic Russian questions; тексты чанков **читабельны для эмбеддингов** (не сырой дамп колонок); стратегия RU↔EN **задокументирована** (не обязательно билингвальные чанки).  
@@ -65,54 +61,27 @@
 2. Spot checks: «Монако 2000», «чемпион 2021» → релевантные чанки (**david-coulthard** / **max-verstappen** или эквивалент) с выбранной нормализацией запроса.
 3. Автотесты или стабильный скрипт проверки retrieval (план).
 
-### Phase 15: Supervisor & Two-Step Web Fetch — SKIPPED
-**Status:** **Не выполняется** в рамках текущего плана (2026-03-28). **AGT-08, AGT-09, SRCH-05** остаются невнедрёнными; граф сохраняет контракт **Phase 12**. Повторный ввод — отдельное решение.
+### Phase 15: Supervisor & Two-Step Web Fetch
+**Goal:** Меньше ложных AGT-05, когда ответ уже в **title/snippet**; супервизор не «ломается» из‑за знания источника; до **двух** осмысленных fetch’ей, если первая страница пуста по фактам.  
+**Depends on:** Phase 14 (RAG baseline clear).  
+**Requirements:** AGT-08, AGT-09, SRCH-05  
+**Success criteria:**
+1. Супервизор: только **соответствие ответа вопросу**; **без** подсказки «из RAG / из веб / из заголовка».
+2. Цепочка: RAG → (reject) → Tavily → достаточно title/snippet? → иначе GigaChat выбирает **2 URL** → fetch #1 → при необходимости fetch #2 (**макс. 2**); суммарные лимиты времени/размера.
+3. Воркер: явные инструкции принять ответ **только** из title/snippet, если факт там выражен; супервизор может принять такой кандидат.
 
-## Phase Details (v1.6 — active)
-
-### Phase 17: TimeAPI & FastF1 schedule services
-**Goal:** The system has a **single authoritative UTC/unix «now»** from TimeAPI.io with bounded HTTP behavior, and can resolve the **next Formula 1 grand prix** (non-testing) and **upcoming session times in UTC** from FastF1 relative to that instant—without the model guessing dates.  
-**Depends on:** Phase 14 (RAG / индекс готов; **не** ждём Phase 15).  
-**Requirements:** TIME-01, SCHED-01  
-**Success Criteria** (what must be TRUE):
-1. An operator or automated check can call the time service and receive **current UTC** (and/or unix epoch) from TimeAPI within a **configured timeout**; on API/network failure, the user-visible or downstream behavior matches the phase plan (**fixed Russian degraded message**, or **documented** fallback only if explicitly chosen in the plan).
-2. For a chosen **season year** (default: calendar year from that UTC «now», with **late-December rollover** handled per plan—e.g. consult next year’s schedule when the next race is in January), the resolver returns the **next race weekend** where **`RoundNumber > 0`**, **testing rounds are excluded**, and the selected event’s **next relevant session or event UTC time** is **strictly after** the TimeAPI timestamp.
-3. The resolver’s structured payload includes **event / grand prix naming**, **country or circuit** as FastF1 provides, and **UTC dates/times for sessions** of the upcoming weekend (or the agreed subset documented in the plan).
-4. **FastF1 ergast / pre-2018** session-time limitations are **documented** wherever schedule results are described (README, tool docstrings, or operator notes) so users know when times are approximate.
-
-**Plans:** 2/2 plans complete
-
-Plans:
-- [x] [17-01-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-01-PLAN.md) — TIME-01: TimeAPI httpx client, `TIMEAPI_UNAVAILABLE_MESSAGE_RU`, tests
-- [x] [17-02-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-02-PLAN.md) — SCHED-01: FastF1 schedule service, exports, tests
-
-### Phase 18: Worker time & schedule tools
-**Goal:** The GigaChat **worker** can call **LangGraph/LangChain tools** for **«сейчас»** and **next GP / session schedule** so answers about upcoming races are grounded in **TIME-01 + SCHED-01**; failures are explicit and **do not break** the rest of the turn.  
-**Depends on:** Phase 17  
-**Requirements:** TOOL-01  
-**Success Criteria** (what must be TRUE):
-1. The worker graph exposes **one or two tools** (combined or separate per plan): **current time** wrapping TIME-01 and **next GP / schedule** wrapping SCHED-01, callable from the same tool surface as other worker tools.
-2. In end-to-end or scripted checks, questions about **«когда следующая гонка»** / **current season «now»** lead the worker to use these tools instead of inventing calendar facts when the question requires live schedule or clock.
-3. When TimeAPI or schedule resolution fails, the tool returns a **clear error** to the model; the **supervisor/RAG/web loop** continues to behave as for other tool failures (no uncaught exception aborting the graph).
-4. **User-facing** assistant text remains **Russian** (or matches existing product language rules); errors are not leaked as raw stack traces to the end user.
-5. If the phase plan agrees with **WEB-02** provenance, **`details`** (or the agreed field) **records** that time/schedule tools were used, without duplicating unrelated web payloads.
-
-**Plans:** TBD
-
-### Phase 19: README, README_DETAILED & Smokes (перенесено с бывшей Phase 16)
-**Goal:** Минимально пригодная онбординг-дока и карта кода; smokes по желанию. Допускается **черновой** уровень (договорённость с владельцем).  
-**Depends on:** Phase 18 (время/расписание в графе, чтобы README описывал актуальный стек).  
+### Phase 16: README, README_DETAILED & Smokes
+**Goal:** New contributors understand **data flow and file roles**; onboarding stays copy-paste friendly.  
+**Depends on:** Phase 15.  
 **Requirements:** DOC-01, DOC-02, TST-01  
 **Success criteria:**
-1. **README**: env, index/build, API + Streamlit (DOC-01) — хотя бы базово.
-2. **README_DETAILED.md**: обзор `src/`, граф, retrieval, контракты (DOC-02) — итеративно.
-3. Pytest marker + opt-in live smokes (TST-01); CI по умолчанию offline/mocked.
-
-**Plans:** TBD
+1. **README**: env, index build, API + Streamlit (DOC-01).
+2. **README_DETAILED.md**: map of `src/`, graph nodes, retrieval, API contracts, Streamlit (DOC-02).
+3. Pytest marker + opt-in live smokes (TST-01); default CI offline/mocked.
 
 ## Progress
 
-**Execution order:** … → **12** → **13** → **14** → **17** → **18** → **19** *(Phase 15 skipped; Phase 16 → 19)*
+**Execution order:** … → 9 → **12** → **13** → **14** (v1.5) → **15** → **16**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -120,7 +89,5 @@ Plans:
 | 12. Supervisor reliability & single-pass web | 2/2 | Complete | 2026-03-28 |
 | 13. Streamlit unified provenance & chat UX | 1/1 | Complete | 2026-03-28 |
 | 14. F1DB RAG corpus & cross-lingual retrieval | 0/1 planned | Complete    | 2026-03-28 |
-| 15. Supervisor & multi-URL web grounding | — | **Skipped** | — |
-| 17. TimeAPI & FastF1 schedule services | 2/2 | Complete    | 2026-03-28 |
-| 18. Worker time & schedule tools | 0/TBD | Planned (v1.6) | — |
-| 19. README, README_DETAILED & smokes | 0/TBD | Planned (v1.6) | — |
+| 15. Supervisor & multi-URL web grounding | 0/TBD | Planned (v1.5) | — |
+| 16. README, README_DETAILED & smokes | 0/TBD | Planned (v1.5) | — |

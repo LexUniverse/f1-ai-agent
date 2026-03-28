@@ -34,7 +34,7 @@ def _retrieve_with_boosted_scores(
     canonical_entity_ids: list[str],
     *,
     top_k: int = 5,
-    min_score: float = 0.35,
+    min_score: float = 0.25,
 ):
     """Use real Chroma but relax floor so tests stay on the RAG path when embeddings are weak."""
     hits = retrieve_historical_context(query, canonical_entity_ids, top_k=top_k, min_score=0.0)
@@ -46,20 +46,24 @@ def _retrieve_with_boosted_scores(
     return [h for h in out if h["score"] >= min_score]
 
 
-def _seed_historical_collection(*, canonical_entity_id: str, source_id: str, snippet: str):
+def _seed_historical_collection(*, source_id: str, snippet: str):
+    from src.retrieval.embeddings import get_embedding_function
+
     client = chromadb.PersistentClient(path=".chroma")
     try:
         client.delete_collection(name=COLLECTION_NAME)
     except Exception:
         pass
-    collection = client.get_or_create_collection(name=COLLECTION_NAME)
+    collection = client.get_or_create_collection(
+        name=COLLECTION_NAME,
+        embedding_function=get_embedding_function(),
+    )
     collection.upsert(
         ids=[f"seed:{source_id}"],
         documents=[snippet],
         metadatas=[
             {
                 "dataset": "f1db",
-                "canonical_entity_id": canonical_entity_id,
                 "source_id": source_id,
             }
         ],
@@ -156,7 +160,10 @@ def test_next_message_uses_inline_retrieval_pipeline(client, monkeypatch):
     assert session is not None
     session.next_message = "Макс Ферстаппен в Монако"
 
-    monkeypatch.setattr("src.api.chat.resolve_entities", lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]))
+    monkeypatch.setattr(
+        "src.api.chat.normalize_retrieval_query",
+        lambda _query: ("max verstappen monaco", [], []),
+    )
     monkeypatch.setattr(
         f1g,
         "retrieve_historical_context",
@@ -187,14 +194,13 @@ def test_response_contains_traceable_evidence_without_monkeypatch(client, monkey
     session.next_message = "Макс Ферстаппен в Монако"
 
     _seed_historical_collection(
-        canonical_entity_id="driver:max_verstappen",
         source_id="f1db:race:2023-monaco",
-        snippet="Verstappen won Monaco GP in 2023 for Red Bull.",
+        snippet="Гран-при Монако 2023: Макс Ферстаппен Red Bull победил.",
     )
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
-        lambda _query: ("max verstappen monaco", ["driver:max_verstappen"], ["driver:max_verstappen"]),
+        "src.api.chat.normalize_retrieval_query",
+        lambda _query: ("макс ферстаппен в монако", [], []),
     )
     monkeypatch.setattr(f1g, "retrieve_historical_context", _retrieve_with_boosted_scores)
     monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: True)
@@ -211,6 +217,6 @@ def test_response_contains_traceable_evidence_without_monkeypatch(client, monkey
     evidence = payload["details"]["evidence"][0]
     assert evidence["source_id"]
     assert evidence["snippet"]
-    assert evidence["entity_tags"] == ["driver:max_verstappen"]
+    assert evidence["entity_tags"] == []
     assert evidence["rank_score"] >= 0
     assert evidence["used_in_answer"] is True

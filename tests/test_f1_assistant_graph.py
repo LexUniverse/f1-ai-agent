@@ -98,7 +98,7 @@ def test_strong_score_skips_tavily(monkeypatch: pytest.MonkeyPatch) -> None:
     assert out.get("synthesis_route") == GIGACHAT_SUCCESS_ROUTE
 
 
-def test_tavily_failure_sets_error_code(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tavily_failure_falls_back_to_rag_no_web(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(f1g, "retrieve_historical_context", lambda *_a, **_k: [])
     monkeypatch.setattr(f1g, "gigachat_author_tavily_query", lambda **_: "q")
     monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: False)
@@ -122,5 +122,7 @@ def test_tavily_failure_sets_error_code(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(f1g, "run_tavily_search_once", _boom)
     g = build_compiled_graph()
     out = g.invoke(_base_state(), config={"recursion_limit": 25})
-    assert out.get("error_code") == "WEB_SEARCH_UNAVAILABLE"
-    assert out.get("terminal_status") == "failed"
+    assert out.get("error_code") is None
+    assert out.get("terminal_status") == "ready"
+    assert out.get("out_message") == "x"
+    assert (out.get("out_details") or {}).get("synthesis", {}).get("route") == "gigachat_rag_no_web"

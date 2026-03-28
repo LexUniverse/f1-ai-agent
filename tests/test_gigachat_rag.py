@@ -120,7 +120,7 @@ def test_chat_historical_next_message_uses_synthesis_route_when_mocked(client, m
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
+        "src.api.chat.normalize_retrieval_query",
         lambda _query: ("q", ["driver:x"], ["driver:x"]),
     )
     monkeypatch.setattr(
@@ -160,7 +160,7 @@ def test_historical_fallback_sets_synthesis_route_and_disclosure(client, monkeyp
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
+        "src.api.chat.normalize_retrieval_query",
         lambda _query: ("q", ["driver:x"], ["driver:x"]),
     )
     monkeypatch.setattr(
@@ -194,7 +194,7 @@ def test_success_path_has_no_disclosure_phrase(client, monkeypatch):
     session.next_message = "fixture query"
 
     monkeypatch.setattr(
-        "src.api.chat.resolve_entities",
+        "src.api.chat.normalize_retrieval_query",
         lambda _query: ("q", ["driver:x"], ["driver:x"]),
     )
     monkeypatch.setattr(
