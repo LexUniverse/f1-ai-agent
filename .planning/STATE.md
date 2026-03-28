@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: supervisor-tuning-single-web-provenance-ui
 status: roadmap_ready
-stopped_at: /gsd-discuss-phase 12 next (or /gsd-plan-phase 12)
+stopped_at: /gsd-plan-phase 12 next
 last_updated: "2026-03-28T23:30:00.000Z"
 last_activity: 2026-03-28
 progress:
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` — **Current milestone: v1.4**
 Phase: Not started (roadmap ready for **Phase 12**)  
 Plan: —  
 Status: Milestone **v1.4** initialized — use **discuss → plan → execute** per phase  
-Last activity: 2026-03-28 — `/gsd-new-milestone` (operator goals captured)
+Last activity: 2026-03-28 — `/gsd-discuss-phase 12` → `12-CONTEXT.md`
 
 ## Performance Metrics
 
