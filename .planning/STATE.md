@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Real-time clock & F1 schedule tools
 status: Roadmap ready — plan Phase 17
-last_updated: "2026-03-28T14:00:00.000Z"
+last_updated: "2026-03-28T15:00:00.000Z"
 last_activity: 2026-03-28
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -16,14 +16,14 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` — **Current milestone: v1.6** (TimeAPI.io + FastF1 schedule tools). **v1.5** phases 15–16 remain on `.planning/ROADMAP.md` until shipped.
+See: `.planning/PROJECT.md` — **Current milestone: v1.6** (phases **17–19**). **v1.5** закрыт частично (**15** skipped, docs → **19**).
 
 ## Current Position
 
-Phase: **17** — TimeAPI & FastF1 schedule services (**TIME-01**, **SCHED-01**) — **planned** (first v1.6 execution target after roadmap)
+Phase: **17** — TimeAPI & FastF1 schedule services (**TIME-01**, **SCHED-01**) — **planned** (первый шаг v1.6; **не** ждём Phase 15)
 Plan: —
-Status: Roadmap updated; next step `/gsd-plan-phase 17` (or complete **v1.5** phases **15–16** first if following strict milestone order on `.planning/ROADMAP.md`)
-Last activity: 2026-03-28 — v1.6 phases **17–18** appended to ROADMAP
+Status: Roadmap: **15** skipped; **16** → **19**; next `/gsd-plan-phase 17`
+Last activity: 2026-03-28 — roadmap reprioritized (время/расписание раньше доков)
 
 ## Performance Metrics
 

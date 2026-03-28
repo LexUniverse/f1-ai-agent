@@ -18,11 +18,11 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - **SCHEDULE:** Загрузка расписания сезона FastF1; выбор **следующего гран-при** (исключить тесты: `RoundNumber > 0`) относительно времени с TimeAPI; при необходимости — ближайшая **сессия** (FP1… Race) в UTC для уточнения «когда старт».
 - **Agent integration:** Зарегистрированные **LangGraph / LangChain tools** для воркера; ответы пользователю по-прежнему **на русском**; согласование с существующим RAG → supervisor → web циклом (инструменты — отдельный канал фактов о «сейчас» и календаре).
 
-**Key context:** FastF1: для сезонов **≥2018** — точные времена сессий; при `backend='ergast'` и до-2018 — ограничения из документации FastF1 (оценочные слоты сессий). TimeAPI — внешняя зависимость; опционально задокументировать fallback на системное UTC только если согласовано в плане фазы.
+**Key context:** FastF1: для сезонов **≥2018** — точные времена сессий; при `backend='ergast'` и до-2018 — ограничения из документации FastF1 (оценочные слоты сессий). TimeAPI — внешняя зависимость; опционально задокументировать fallback на системное UTC только если согласовано в плане фазы. **Документация** (**DOC-01, DOC-02, TST-01**) — **Phase 19** в конце v1.6 (черновик ок).
 
-## Previous milestone (roadmap not finished)
+## Previous milestone (v1.5 — закрыт частично)
 
-**v1.5** — Фазы **15–16** в `.planning/ROADMAP.md`: слепой супервизор, до двух fetch, документация и smokes (**AGT-08**, **AGT-09**, **SRCH-05**, **DOC-01**, **DOC-02**, **TST-01**). Требования остаются в `.planning/REQUIREMENTS.md` до закрытия соответствующих фаз.
+**v1.5:** **Phase 14** (RAG whitelist, чанки, **ru-en-RoSBERTa** / датасет из БД) — **сделано**. **Phase 15** (слепой супервизор, два fetch) — **пропущена**; в продукте остаётся **Phase 12** (один Tavily + один fetch). Бывшая **Phase 16** перенесена в **v1.6 Phase 19**.
 
 ## Requirements
 
@@ -40,10 +40,10 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ **Supervisor JSON repair + optional decision logging; one Tavily per turn; web URL plan + optional single-page fetch; `details.provenance`** (RAG + web + synthesis, legacy `web` preserved) — validated in Phase 12 (supervisor-reliability-single-pass-web): **AGT-06, AGT-07, SRCH-04, WEB-02**.
 - ✓ **Streamlit chronological chat, answer before provenance UI, single Russian «Происхождение ответа» expander** (RAG + web + synthesis; legacy fallback; separate live panel) — validated in Phase 13 (streamlit-unified-provenance-chat-ux): **UI-04, UI-05, UI-06**.
 
-### Active (v1.6 + residual v1.5)
+### Active (v1.6)
 
-- **v1.6:** **TIME-01, SCHED-01, TOOL-01** — TimeAPI «сейчас», FastF1 следующий ГП/сессии, инструменты в графе — see `.planning/REQUIREMENTS.md`.
-- **v1.5 (until phases 15–16 close):** **AGT-08, AGT-09, SRCH-05, DOC-01, DOC-02, TST-01** — same file, v1.5 section.
+- **TIME-01, SCHED-01, TOOL-01** — TimeAPI, FastF1 расписание, tools в графе (**фазы 17–18**).
+- **DOC-01, DOC-02, TST-01** — README / README_DETAILED / smokes (**фаза 19**, после 17–18).
 
 ### Out of Scope
 
@@ -53,7 +53,7 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 
 ## Context
 
-Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streamlit. Historical data: f1db in ChromaDB (whitelist tables). Web: **Tavily** (one query per turn after RAG path fails supervisor) plus **up to 2** sequential **bounded** HTTP fetches of URLs **chosen by GigaChat** from the result list when titles/snippets are insufficient (**AGT-09**). **GigaChat** drives worker steps (title sufficiency, URL pick). **Supervisor** judges accept/reject **without** being told whether the candidate came from RAG, web body, or titles only (**AGT-08**). No product confidence field.
+Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streamlit. Historical data: f1db in ChromaDB (whitelist tables), embeddings **ru-en-RoSBERTa** (операторский пайплайн). Web: **Tavily** — **один** запрос на ход после отклонения RAG супервизором; **один** optional bounded fetch (**Phase 12**). Запланированная **Phase 15** (два fetch, «слепой» супервизор **AGT-08**) **не внедряется** в текущем цикле. **GigaChat** ведёт воркера; **супервизор** оценивает кандидат vs вопрос. No product confidence field.
 
 ## Constraints
 
@@ -82,6 +82,8 @@ Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streaml
 | v1.5: README_DETAILED | Onboarding README too shallow for graph/RAG | **DOC-02** full file/module map. |
 | v1.6: Authoritative «now» | Модель не знает текущую дату для «следующей гонки» | **TIME-01** — TimeAPI.io как источник UTC/unix. |
 | v1.6: Calendar facts | Расписание из FastF1 EventSchedule vs произвольный веб | **SCHED-01** + **TOOL-01** в воркере. |
+| v1.6: Docs after features | Сначала время/расписание, потом README | **DOC-*** → **Phase 19**. |
+| 2026-03-28: Skip Phase 15 | Уже устроил RAG/эмбеддинги; не тянуть два fetch сейчас | Roadmap: Phase 15 **skipped**; **Phase 16 → 19**. |
 
 ## Evolution
 
@@ -101,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — **v1.6** started (TimeAPI + FastF1 schedule tools); **v1.5** phases **15–16** still on roadmap until closed.*
+*Last updated: 2026-03-28 — **v1.6** active: phases **17–19**; **v1.5** partial close (14 done, 15 skipped, docs → 19).*

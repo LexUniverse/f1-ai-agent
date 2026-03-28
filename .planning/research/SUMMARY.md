@@ -1,6 +1,6 @@
 # Research summary — v1.6 TimeAPI + FastF1 schedule tools
 
-**Milestone:** v1.6 — condensed from user spec + public API docs (full 4-dimension research skipped).
+**Milestone:** v1.6 — condensed from user spec + public API docs (full 4-dimension research skipped). **Execution order:** phases **17 → 18 → 19** (docs last; Phase 15 skipped).
 
 ## Stack additions
 
