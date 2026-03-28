@@ -35,6 +35,8 @@
 3. Worker **ranks** results, can answer from **titles/snippets**, else **fetches one** URL (bounded) before resubmitting to supervisor.
 4. **`details`** (or documented extension) supports **one** UI-facing provenance payload (RAG + web + optional fetch meta).
 
+**Plans:** `12-01-PLAN.md` (wave 1 — graph + GigaChat + fetch), `12-02-PLAN.md` (wave 2 — WEB-02 provenance in API).
+
 ### Phase 13: Streamlit Unified Provenance & Chat UX
 **Goal:** Operator sees **one** clear expandable «происхождение» with RAG + web; main answer unduplicated.  
 **Depends on:** Phase 12 (payload shape stable).  
@@ -57,6 +59,6 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1–9 | … | Complete | 2026-03-27 — 2026-03-28 |
-| 12. Supervisor reliability & single-pass web | 0/TBD | Planned | — |
+| 12. Supervisor reliability & single-pass web | 0/2 | Planned | — |
 | 13. Streamlit unified provenance & chat UX | 0/TBD | Planned | — |
 | 14. README & credential smokes | 0/TBD | Planned | — |

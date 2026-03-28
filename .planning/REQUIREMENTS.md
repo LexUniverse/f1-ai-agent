@@ -90,7 +90,8 @@ Deferred (voice, personalization, Docker, etc.) — unchanged.
 | AGT-04 (v1.3 two Tavily) | 9 | **Superseded** → AGT-07 |
 | UI-04, UI-05 | 10 → **13** | Planned (v1.4) |
 | DOC-01, TST-01 | 11 → **14** | Planned (v1.4) |
-| AGT-06, AGT-07, SRCH-04, WEB-02 | 12 | Planned |
+| AGT-06, AGT-07, SRCH-04 | 12 (wave 1) | Planned |
+| WEB-02 | 12 (wave 2) | Planned |
 | UI-06 | 13 | Planned |
 
 **Coverage (v1.4):** Phases **12–14** planned; Phases **1–9** complete (subject to v1.4 supersession of AGT-04).
