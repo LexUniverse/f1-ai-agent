@@ -80,7 +80,11 @@
 3. The resolver’s structured payload includes **event / grand prix naming**, **country or circuit** as FastF1 provides, and **UTC dates/times for sessions** of the upcoming weekend (or the agreed subset documented in the plan).
 4. **FastF1 ergast / pre-2018** session-time limitations are **documented** wherever schedule results are described (README, tool docstrings, or operator notes) so users know when times are approximate.
 
-**Plans:** TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] [17-01-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-01-PLAN.md) — TIME-01: TimeAPI httpx client, `TIMEAPI_UNAVAILABLE_MESSAGE_RU`, tests
+- [ ] [17-02-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-02-PLAN.md) — SCHED-01: FastF1 schedule service, exports, tests
 
 ### Phase 18: Worker time & schedule tools
 **Goal:** The GigaChat **worker** can call **LangGraph/LangChain tools** for **«сейчас»** and **next GP / session schedule** so answers about upcoming races are grounded in **TIME-01 + SCHED-01**; failures are explicit and **do not break** the rest of the turn.  
@@ -117,6 +121,6 @@
 | 13. Streamlit unified provenance & chat UX | 1/1 | Complete | 2026-03-28 |
 | 14. F1DB RAG corpus & cross-lingual retrieval | 0/1 planned | Complete    | 2026-03-28 |
 | 15. Supervisor & multi-URL web grounding | — | **Skipped** | — |
-| 17. TimeAPI & FastF1 schedule services | 0/TBD | Planned (v1.6) | — |
+| 17. TimeAPI & FastF1 schedule services | 0/2 | Planned (v1.6) | — |
 | 18. Worker time & schedule tools | 0/TBD | Planned (v1.6) | — |
 | 19. README, README_DETAILED & smokes | 0/TBD | Planned (v1.6) | — |
