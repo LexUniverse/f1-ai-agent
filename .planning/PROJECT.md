@@ -2,24 +2,25 @@
 
 ## What This Is
 
-Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know recent seasons but want to learn the full history and context. The system combines **RAG over historical F1 data** with **web search (Tavily via LangChain)** when retrieval is insufficient, orchestrated by a **LangGraph supervisor with GigaChat at the core**, then returns structured, reliable answers in chat. Primary interaction language is Russian, with bilingual RU/EN support for source grounding and responses.
+Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know recent seasons but want to learn the full history and context. The system combines **RAG over historical F1 data** with **web search (Tavily via LangChain)** when needed, orchestrated by a **LangGraph + LangChain** turn: a **supervisor** (GigaChat) **accepts or rejects candidate answers** from a **worker agent** that first answers **from RAG only**, then uses the **search tool** only when the supervisor demands a better answer. Primary interaction language is Russian, with bilingual RU/EN support for source grounding and responses.
 
 ## Core Value
 
 The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
-## Current Milestone: v1.3 — Web answer fidelity & Streamlit UX
+## Current Milestone: v1.3 — Supervisor–agent graph, no confidence, UX & docs
 
-**Goal:** Fix the **Tavily branch** so the user sees a **direct Russian answer to their original question**, synthesized from search snippets (not an echo of the search query or link-only noise). Align **Streamlit** with operator expectations: **chronological chat** (newest turns next to the composer), **message text first** with **sources in a collapsible block**, and **no confidence UI** until scores are meaningful. Ship **structured web provenance** in the API, plus **README / `.env` catalog** and **opt-in credential smokes** carried forward from v1.2.
+**Goal:** Replace the **linear** Phase-8 graph (retrieve → sufficiency → Tavily → synthesize) with an explicit **supervisor / Agent 1** loop built with **LangGraph + LangChain**: Agent 1 first produces an answer **using only RAG**; the **supervisor** judges whether it adequately answers the **user’s original question**; if not, the supervisor instructs Agent 1 to call the **web search tool**, integrate results, and submit a **new** answer; the supervisor judges again. **At most two** search-backed iterations after the initial RAG attempt; if the answer is still inadequate, return a **fixed Russian message** that the system could not find a satisfactory answer. **Remove `confidence` from the product entirely** (schemas, `details`, Streamlit, tests) — not merely hidden in UI. Also: **`details.web`** when search is used, **Streamlit** chronological chat with **message first** and **expandable sources**, **README** + **opt-in credential smokes**.
 
 **Target features:**
 
-- **Answer pipeline:** Unchanged order at a high level — **RAG first**; **Tavily only** when RAG is judged insufficient; then **synthesis must use snippets to answer the user’s question** (prompts, validation, and tests for regressions like «кто победил в сезоне 2021»).
-- **API contract:** **`details.web`** (query, URLs, snippets/metadata) when search contributed; Streamlit consumes it for display logic.
-- **Streamlit:** Append turns in **time order**; default view = **assistant `message` only**; **источники** in **`st.expander`**; **remove** уверенность from the UI.
-- **Docs & quality:** **README** + **`.env.example`** completeness; **pytest** smokes for live keys (marker/opt-in), default CI offline.
+- **Architecture:** LangGraph state machine + LangChain tool binding for **Tavily**; **supervisor** node evaluates **answer vs user question**; **Agent 1** node generates from **RAG-only** context until supervisor routes to **tool use**, then re-generates with **RAG + web** snippets.
+- **Search cap:** After the **first RAG answer**, supervisor may trigger **up to two** search-and-rewrite cycles; then **terminal “не удалось найти ответ”** (or agreed copy) if still insufficient.
+- **API:** No **`confidence`** fields anywhere; structured **`details.web`** when the tool contributed; citations/sources remain.
+- **Streamlit:** Append-order history; primary **`message`**; sources in **expander**; no confidence (aligned with API).
+- **Docs & quality:** **README** / **`.env.example`**; **pytest** smokes (marker/opt-in).
 
-**Key context:** v1.2 Phase 8 shipped LangGraph + Tavily and removed f1api from the answer path. Manual testing showed **`gigachat_web`** sometimes returning non-answers (question echo / search-oriented text). Streamlit currently **`insert(0, …)`** messages, so **new replies appear at the top**; confidence is a **constant middle tier** in the web path — misleading in UI.
+**Key context:** Phase 8 shipped a simpler gate. Operator testing showed weak **web synthesis** and meaningless **flat confidence**. v1.3 makes **quality gating explicit** via the supervisor and drops confidence as a signal.
 
 ## Requirements
 
@@ -28,33 +29,35 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ Access is restricted by per-user code allowlist authentication — validated in Phase 01 (access-control)
 - ✓ Async API contracts are typed and deterministic for session bootstrap, status polling, and next-message flow — validated in Phase 02 (async-backend-contracts)
 - ✓ Historical answers are grounded in indexed f1db retrieval with traceable evidence — validated in Phase 03 (historical-rag-grounding)
-- ✓ Russian `/next_message` responses expose structured QnA details, explicit confidence, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability)
+- ✓ Russian `/next_message` responses expose structured QnA details, numbered sources, and safe abstention when evidence is missing — validated in Phase 04 (ru-q-a-answer-reliability); *Phase 4 also shipped explicit confidence — **superseded by v1.3 (confidence removed)**.*
 - ✓ Live enrichment after historical retrieval uses a deterministic gate, surfaces `LiveDetails` / `as_of` in responses, and returns a fixed Russian degraded message when f1api.dev is unavailable — validated in Phase 05 (live-enrichment-freshness)
-- ✓ GigaChat classic RAG on historical and live success paths with hybrid citations, deterministic confidence, and explicit template fallback + disclosure when the LLM fails — validated in Phase 06 (gigachat-classic-rag)
-- ✓ Streamlit operator UI (`/start_chat` with question, status polling, `/next_message`) showing message, confidence, citations, live and synthesis metadata; documented local **API + Streamlit** run (`python api.py`, `streamlit run streamlit_app.py`) without Docker — validated in Phase 07 (streamlit-ui-local-run)
-- ✓ **LangGraph** turn orchestration (**RAG** + **Tavily** via LangChain), **GigaChat** sufficiency judge and synthesis, **`asyncio.to_thread`** from async `/next_message`; **f1api.dev** removed from answer path; **`WEB_SEARCH_UNAVAILABLE`** fixed Russian copy — validated in Phase 08 (langgraph-supervisor-tavily-tooling)
+- ✓ GigaChat classic RAG on historical paths with hybrid citations and explicit template fallback + disclosure when the LLM fails — validated in Phase 06 (gigachat-classic-rag); *confidence on that path superseded by v1.3.*
+- ✓ Streamlit operator UI (`/start_chat`, status polling, `/next_message`) with citations and synthesis metadata; documented local **API + Streamlit** run — validated in Phase 07 (streamlit-ui-local-run); *UI confidence superseded by v1.3.*
+- ✓ **LangGraph** turn with **RAG** + **Tavily (LangChain)** and **GigaChat**; **f1api.dev** removed from answer path — validated in Phase 08 (langgraph-supervisor-tavily-tooling); *linear orchestration superseded by v1.3 supervisor–agent loop.*
 
 ### Active (v1.3)
 
-- **SRCH-03 / synthesis:** Tavily path answers the **original user question** in Russian using returned page content; no query-echo or sources-only as the primary reply.
-- **WEB-01:** Structured **`details.web`** when search is used; clients can show provenance separately from RAG citations.
-- **UI-04 — UI-06:** Streamlit chronological layout; primary text + expandable sources; confidence hidden in UI.
-- **DOC-01 / TST-01:** README + `.env` acquisition links; opt-in live smokes.
+- **AGT-03 — AGT-05:** Supervisor–Agent 1 loop (LangGraph + LangChain tool), RAG-first, ≤2 search iterations, terminal failure copy.
+- **SRCH-03:** Final user-visible **`message`** answers the **original** question (no query-echo / sources-only as sole body).
+- **WEB-01:** Structured **`details.web`** when search tool used.
+- **API-05:** **`confidence` removed** from all API payloads, Pydantic models, and downstream builders.
+- **UI-04, UI-05:** Chronological chat; message first; expandable sources.
+- **DOC-01, TST-01:** README + `.env` catalog; opt-in live smokes.
 
 ### Out of Scope
 
 - Voice mode — not required for first release.
 - Advanced personalization — defer until core QA reliability is proven.
-- **Recalibrated confidence scores** for the web path — deferred; UI hides confidence until a meaningful signal exists.
+- **Confidence as a product field** — removed in v1.3; not deferred for recalibration.
 
 ## Context
 
-The target architecture is a **LangGraph** supervisor with delegated nodes (**RAG**, **tool/Tavily**, **synthesis**). Backend is FastAPI with async endpoints and Pydantic models for structured JSON validation. Frontend is Streamlit chat. Historical data comes from f1db loaded into ChromaDB for retrieval. When RAG context is insufficient, **Tavily web search** (via LangChain) supplies external evidence instead of a dedicated Formula 1 REST API.
+Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streamlit. Historical data: f1db in ChromaDB. Web: **Tavily** via **LangChain** tools inside a **LangGraph** compiled graph; **GigaChat** drives supervisor and worker prompts. The v1.3 graph is the **source of truth** for when search runs (supervisor decision after seeing Agent 1’s RAG-only answer), not only a pre-synthesis retrieval score.
 
 ## Constraints
 
 - **Accuracy**: At least 98% correct answers on agreed validation set — primary success metric.
-- **Latency**: Typical response time up to 10 seconds for standard non-heavy requests.
+- **Latency**: Typical response time up to 10 seconds for standard non-heavy requests (supervisor loops may tighten budgets per plan).
 - **Language**: Russian user interaction with Russian+English handling for data grounding.
 - **Auth**: Access controlled via per-user code allowlist.
 - **Deployment:** Local run — API + Streamlit; Docker not a milestone goal unless scoped later.
@@ -63,12 +66,11 @@ The target architecture is a **LangGraph** supervisor with delegated nodes (**RA
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| RAG-first, web-second response policy (v1.2) | Stabilize quality; Tavily only when RAG insufficient | Replace f1api live branch with LangGraph gate + Tavily tool. |
-| Explicit degraded-mode when web search fails | Prevent silent failures | Reuse pattern from Phase 05; message/RU copy updated for Tavily timeouts. |
-| Per-user code allowlist authentication for v1 | Lightweight access control with minimal implementation overhead | Delivered Phase 01; unchanged. |
-| RU-first UX with RU/EN support | Users are Russian-speaking while source data is primarily English | — |
-| v1.3: Web synthesis must answer the user’s question | Operator testing showed bad `gigachat_web` outputs | Tighten prompts / post-checks + regression tests. |
-| v1.3: Hide confidence in Streamlit | Web path used a flat confidence; misleading | UI omits tier/score until recalibration. |
+| RAG-first, web-second response policy (v1.2) | Stabilize quality | v1.3 keeps RAG-first **via Agent 1**; web only after **supervisor** rejection. |
+| Explicit degraded-mode when web search fails | Prevent silent failures | Preserve; align copy with new terminal failure path where relevant. |
+| v1.3: Supervisor judges answers | Linear sufficiency gate insufficient for answer quality | Supervisor accepts/rejects **full candidate answers** vs user question. |
+| v1.3: Max two search iterations | Cost/latency + avoid infinite loops | After 2 tool cycles post–RAG attempt, fixed RU “could not find answer”. |
+| v1.3: Remove confidence entirely | Misleading constant / no calibration | Drop from schemas, details, Streamlit, tests. |
 
 ## Evolution
 
@@ -88,4 +90,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — Milestone v1.3 started (web fidelity + Streamlit UX + docs/smokes)*
+*Last updated: 2026-03-28 — v1.3 rescoped: supervisor–agent loop, confidence removed product-wide*

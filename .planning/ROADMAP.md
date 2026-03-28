@@ -2,9 +2,9 @@
 
 ## Overview
 
-This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0 (Phases 1–5)** shipped core API, RAG, RU contracts, and live enrichment. **v1.1 (Phases 6–7)** added **GigaChat classic RAG** and **Streamlit**. **v1.2 (Phases 8)** shipped the **LangGraph** supervisor, **RAG sufficiency → Tavily**, and removed **f1api** from the answer path.
+This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0–v1.2 (Phases 1–8)** shipped API, RAG, GigaChat paths, Streamlit, and a **linear** LangGraph with **RAG gate → Tavily**.
 
-**v1.3 (Phases 9–11)** fixes **web-path synthesis** so users get **answers to their original questions**, adds **`details.web`**, refreshes **Streamlit** (chronological chat, expandable sources, no confidence UI), and delivers **README + opt-in credential smokes**.
+**v1.3 (Phases 9–11)** **replaces** that linear orchestration with a **supervisor + Agent 1** loop (**LangGraph + LangChain**): **RAG-only** first answer → **supervisor** accepts or rejects → on reject, **Agent 1** uses the **search tool** (up to **two** iterations) → if still unacceptable, **fixed Russian failure message**. **Confidence is removed everywhere.** Then **Streamlit** layout polish and **README / credential smokes**.
 
 ## Phases
 
@@ -19,83 +19,45 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0 (Phas
 - [x] **Phase 5: Live Enrichment & Freshness** - *(Completed: 2026-03-27)*
 - [x] **Phase 6: GigaChat Classic RAG** - *(Completed: 2026-03-27)*
 - [x] **Phase 7: Streamlit UI & Local Run** - *(Completed: 2026-03-27)*
-- [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28)*
-- [ ] **Phase 9: Web Answer Pipeline & API Provenance** - **SRCH-03**, **WEB-01**: synthesis answers original user question; structured `details.web`; regression coverage (e.g. 2021 champion scenario).
-- [ ] **Phase 10: Streamlit Chat UX** - **UI-04**, **UI-05**, **UI-06**: append-order history, message-first + expandable sources, hide confidence.
-- [ ] **Phase 11: README & Credential Smokes** - **DOC-01**, **TST-01**: full `.env` catalog with acquisition links; opt-in live pytest marker.
+- [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28; linear graph — superseded by Phase 9 design)*
+- [ ] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - **AGT-03, AGT-04, AGT-05**, **SRCH-03**, **WEB-01**, **API-05**: LangGraph+LangChain supervisor loop (RAG first, ≤2 searches, terminal RU failure); strip all `confidence` from models and payloads; `details.web`; tests for loop bounds and answer quality.
+- [ ] **Phase 10: Streamlit Chat UX** - **UI-04**, **UI-05**: chronological append-order, message-first + expandable sources (no confidence — **API-05**).
+- [ ] **Phase 11: README & Credential Smokes** - **DOC-01**, **TST-01**.
 
 ## Phase Details
 
-### Phase 1: Access Control
-**Goal**: Only authorized users can use the assistant through personal access codes.  
-**Requirements**: AUTH-01, AUTH-02  
-**Success Criteria**: *(unchanged — see archived phase docs)*  
-**Plans**: 2 (complete)
+### Phases 1–8
 
-### Phase 2: Async Backend Contracts
-**Goal**: Typed async chat endpoints.  
-**Requirements**: API-01 … API-04  
-**Plans**: 2 (complete)
+**Goals and requirements** as historically delivered; Phase 8 graph is **replaced** by Phase 9 architecture (see phase docs under `.planning/phases/`).
 
-### Phase 3: Historical RAG Grounding
-**Goal**: f1db-grounded historical answers.  
-**Requirements**: RAG-01 … RAG-03  
-**Plans**: 4 (complete)
-
-### Phase 4: RU Q&A Answer Reliability
-**Goal**: Structured Russian answers with citations and abstention.  
-**Requirements**: QNA-01 … QNA-03  
-**Plans**: 2 (complete)
-
-### Phase 5: Live Enrichment & Freshness
-**Goal**: Live augmentation with degraded modes *(v1.0 f1api path; superseded for new freshness by Tavily in v1.2+)*.  
-**Requirements**: LIVE-01 … LIVE-03  
-**Plans**: 2 (complete)
-
-### Phase 6: GigaChat Classic RAG
-**Goal**: GigaChat chunk-grounded RAG + template fallback.  
-**Requirements**: GC-01 … GC-03  
-**Plans**: 2 (complete)
-
-### Phase 7: Streamlit UI & Local Run
-**Goal**: Local Streamlit + API runbook.  
-**Requirements**: UI-01 … UI-03, RUN-01  
-**Plans**: 2 (complete)
-
-### Phase 8: LangGraph Supervisor & Tavily Tooling
-**Goal**: GigaChat-centric graph; RAG gate; Tavily; no f1api in answer path.  
-**Requirements**: AGT-01, AGT-02, SRCH-01, SRCH-02  
-**Plans**: 2 (complete)
-
-### Phase 9: Web Answer Pipeline & API Provenance
-**Goal**: Operators and API clients get **correct Russian answers** when Tavily runs; **web provenance** is structured for UIs.  
-**Depends on**: Phase 8  
-**Requirements**: SRCH-03, WEB-01  
+### Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance
+**Goal:** **Supervisor** evaluates **full answers** from **Agent 1**; **RAG-only** first; **LangChain Tavily tool** only after supervisor rejection; **≤2** search iterations; then **AGT-05** failure message. **Remove confidence** from API. **Structured `details.web`.**  
+**Depends on:** Phase 8 codebase (refactor in place).  
+**Requirements:** AGT-03, AGT-04, AGT-05, SRCH-03, WEB-01, API-05  
 **Success Criteria** (what must be TRUE):
-  1. For representative queries that route to Tavily (e.g. recent-season champion facts), the top-level **`message`** states the factual answer implied by the user question, in Russian, without substituting the search query text as the answer body.
-  2. When Tavily contributed, **`details.web`** includes at least **query**, **source URLs**, and **snippet or title metadata** per hit (shape documented in code or OpenAPI).
-  3. **RAG-only** turns remain correct; no regression in historical path wiring.
-**Plans**: TBD
+  1. A compiled **LangGraph** run per turn includes an explicit **supervisor** decision step on **candidate answer text** vs **user question** (not only retrieval score).
+  2. **Agent 1**’s **first** candidate uses **no web tool**; web tool invocations are **count-limited** to **two** after that, driven by supervisor rejection.
+  3. After **two** unsuccessful search-backed attempts (per AGT-04), the user receives the **AGT-05** fixed Russian message and no fabricated answer.
+  4. **No** `confidence` field appears in `/next_message` JSON, Pydantic models, or documented examples.
+  5. When the tool contributed to the **accepted** answer, **`details.web`** is populated; final **`message`** satisfies **SRCH-03** (answers original question).
+**Plans:** TBD
 
 ### Phase 10: Streamlit Chat UX
-**Goal**: Chat layout matches operator mental model: **newest near input**, **clean default view**, **sources on demand**.  
-**Depends on**: Phase 9 *(can parallelize API-only slices after Phase 9 contracts are stable — prefer sequential if `details.web` drives UI)*  
-**Requirements**: UI-04, UI-05, UI-06  
+**Goal:** Operator chat matches API: **newest near input**, **clean default**, **sources on demand**, **no confidence**.  
+**Depends on:** Phase 9 (API-05 stable).  
+**Requirements:** UI-04, UI-05  
 **Success Criteria** (what must be TRUE):
-  1. After multiple turns, scrolling to the bottom shows the **latest** user question and assistant reply **immediately above** the input row (append semantics).
-  2. Assistant **answer text** is visible without opening expanders; **sources** require a deliberate expand action.
-  3. **Confidence** tier/score is **not** shown in the Streamlit UI.
-**Plans**: TBD
+  1. Multiple turns: latest user + assistant visible **just above** composer (**append** semantics).
+  2. Assistant **body** visible without expanders; **sources** behind expander.
+  3. No confidence UI elements.
+**Plans:** TBD
 
 ### Phase 11: README & Credential Smokes
-**Goal**: Onboarding from README alone; optional live verification of secrets.  
-**Depends on**: Phase 10  
-**Requirements**: DOC-01, TST-01  
-**Success Criteria** (what must be TRUE):
-  1. README lists every required **`.env`** variable with **how to obtain** it (links or steps); commands for API + Streamlit + index build.
-  2. `.env.example` matches documented variables (placeholders only).
-  3. Pytest defines a **smoke/integration** marker; documented env flag runs real GigaChat + Tavily checks; default test run stays offline/mocked.
-**Plans**: TBD
+**Goal:** Onboarding and optional live key verification.  
+**Depends on:** Phase 10  
+**Requirements:** DOC-01, TST-01  
+**Success Criteria:** *(unchanged — full `.env` catalog, pytest marker, offline default)*  
+**Plans:** TBD
 
 ## Progress
 
@@ -104,6 +66,6 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0 (Phas
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1–8 | … | Complete | 2026-03-27 — 2026-03-28 |
-| 9. Web Answer Pipeline & API Provenance | 0/TBD | Planned | — |
+| 9. Supervisor–Agent Graph, No Confidence, Web Provenance | 0/TBD | Planned | — |
 | 10. Streamlit Chat UX | 0/TBD | Planned | — |
 | 11. README & Credential Smokes | 0/TBD | Planned | — |

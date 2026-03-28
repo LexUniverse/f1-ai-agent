@@ -18,15 +18,15 @@
 
 **Completed (scope delivered):** 2026-03-28  
 **Phases:** 1–8 (through LangGraph + Tavily; f1api removed from `/next_message`).  
-**Outcome:** Compiled graph, sufficiency gate, GigaChat web path, bounded search/degraded RU copy.
+**Outcome:** Compiled graph, retrieval sufficiency gate, GigaChat web path, bounded search/degraded RU copy.
 
-_Note: Originally scoped README + credential smokes + WEB contract as phases 9–10; **rescoped into v1.3** as phases 9–11 with additional synthesis + Streamlit UX work._
+_Note: Linear Phase-8 orchestration is **replaced** in v1.3 by a **supervisor–Agent 1** loop. Originally scoped README + smokes + WEB contract moved to **v1.3 phases 9–11**._
 
 ---
 
 ## Active
 
-### v1.3 — Web answer fidelity, Streamlit UX, docs & smokes
+### v1.3 — Supervisor–agent graph, confidence removed, UX & docs
 
 **Started:** 2026-03-28  
-**Focus:** Fix **Tavily → synthesis** so replies **answer the user’s original question** (not search-query echo); **`details.web`** in API; Streamlit **chronological** chat, **message first** + **expandable sources**, **no confidence** in UI; **README** / **`.env`** catalog and **opt-in pytest** smokes for GigaChat + Tavily.
+**Focus:** **LangGraph + LangChain**: **supervisor** accepts/rejects **candidate answers**; **Agent 1** answers **RAG-only** first, then uses **Tavily tool** up to **two** times on supervisor demand; **fixed RU failure** if still inadequate. **`confidence` removed from entire API and UI.** **`details.web`**; Streamlit **chronological** chat, **message first**, **expandable sources**; **README** + **opt-in pytest** smokes.
