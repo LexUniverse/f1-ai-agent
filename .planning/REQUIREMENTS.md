@@ -128,13 +128,18 @@ Deferred (voice, personalization, Docker, etc.) — unchanged.
 | AGT-01–02, SRCH-01–02 | 8 | Complete / superseded |
 | AGT-03, AGT-05, SRCH-03, WEB-01, API-05 | 9 | Complete |
 | AGT-04 (v1.3 two Tavily) | 9 | **Superseded** → AGT-07 |
-| UI-04, UI-05 | 10 → **13** | Planned (v1.4) |
-| DOC-01, TST-01 | 11 → **14** | Planned (v1.4) |
-| AGT-06, AGT-07, SRCH-04 | 12 (wave 1) | Planned |
-| WEB-02 | 12 (wave 2) | Planned |
-| UI-06 | 13 | Planned |
+| AGT-06, AGT-07, SRCH-04, WEB-02 | 12 | Complete |
+| UI-04, UI-05, UI-06 | 13 | Complete |
+| RAG-08, RAG-09 | 14 | Complete |
+| AGT-08, AGT-09, SRCH-05 | 15 | Pending |
+| DOC-01, DOC-02, TST-01 | 16 | Pending |
+| TIME-01 | 17 | Pending |
+| SCHED-01 | 17 | Pending |
+| TOOL-01 | 18 | Pending |
 
-**Coverage (v1.4):** Phases **12–14** planned; Phases **1–9** complete (subject to v1.4 supersession of AGT-04).
+**Coverage (v1.4):** Phases **12–13** complete; Phase **14** complete (**RAG-08/09**); Phases **1–9** complete (subject to v1.4 supersession of AGT-04).
+
+**Coverage (v1.6):** **TIME-01**, **SCHED-01** → Phase **17**; **TOOL-01** → Phase **18**.
 
 ---
-*Last updated: 2026-03-28 — v1.4 milestone: REQ-IDs AGT-06/07, SRCH-04, WEB-02, UI-06, DOC-01, TST-01*
+*Last updated: 2026-03-28 — v1.6 traceability: TIME-01, SCHED-01 (17); TOOL-01 (18); v1.5 rows aligned to phases 14–16*
