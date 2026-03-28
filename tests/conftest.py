@@ -18,8 +18,8 @@ from src.sessions.store import SessionStore
 
 @pytest.fixture(autouse=True)
 def reset_state():
-    # Same embedding model as production / .env when tests run without dotenv.
-    os.environ.setdefault("F1_EMBEDDING_MODEL", "ai-forever/ru-en-RoSBERTa")
+    # Эмбеддинги: как в приложении — `embedding_model/` в корне, если есть, иначе Hub
+    # (`src/retrieval/embeddings.get_embedding_model_name`). Не форсируем F1_EMBEDDING_MODEL здесь.
     os.environ["AUTH_ALLOWLIST_CODES"] = "ABC123,XYZ789"
     app.state.session_store = SessionStore()
     app.state.auth_service = AuthService(limiter=AuthLimiter(max_failures=5, window_seconds=300, cooldown_seconds=600))
