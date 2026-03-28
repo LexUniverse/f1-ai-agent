@@ -2,15 +2,13 @@
 
 ## Overview
 
-This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0–v1.2 (Phases 1–8)** shipped API, RAG, GigaChat paths, Streamlit, and a **linear** LangGraph with **RAG gate → Tavily**.
+**v1.0–v1.2:** API, RAG, GigaChat, linear LangGraph + Tavily. **v1.3 Phase 9:** Supervisor + Agent 1, **no confidence**, **`details.web`**.
 
-**v1.3 (Phases 9–11)** **replaces** that linear orchestration with a **supervisor + Agent 1** loop (**LangGraph + LangChain**): **RAG-only** first answer → **supervisor** accepts or rejects → on reject, **Agent 1** uses the **search tool** (up to **two** iterations) → if still unacceptable, **fixed Russian failure message**. **Confidence is removed everywhere.** Then **Streamlit** layout polish and **README / credential smokes**.
+**v1.4 (phases 12–14):** Fix **supervisor false negatives** (AGT-06), **one Tavily + optional single-page fetch** (AGT-07, SRCH-04), **unified API provenance** (WEB-02), **Streamlit** single expander + chronological chat (UI-04/05/06), **README + smokes** (DOC-01, TST-01).
+
+> **Note:** Original **v1.3 phases 10–11** (Streamlit polish, README/smokes) are **not executed separately**; scope is **merged into v1.4** as phases **13–14** with expanded UI requirements (**UI-06**).
 
 ## Phases
-
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Access Control** - *(Completed: 2026-03-27)*
 - [x] **Phase 2: Async Backend Contracts** - *(Completed: 2026-03-27)*
@@ -19,53 +17,46 @@ This roadmap delivers a trust-first Formula 1 assistant in Russian. **v1.0–v1.
 - [x] **Phase 5: Live Enrichment & Freshness** - *(Completed: 2026-03-27)*
 - [x] **Phase 6: GigaChat Classic RAG** - *(Completed: 2026-03-27)*
 - [x] **Phase 7: Streamlit UI & Local Run** - *(Completed: 2026-03-27)*
-- [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28; linear graph — superseded by Phase 9 design)*
-- [x] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - *(Completed: 2026-03-28)* **AGT-03, AGT-04, AGT-05**, **SRCH-03**, **WEB-01**, **API-05**: LangGraph+LangChain supervisor loop (RAG first, ≤2 searches, terminal RU failure); strip all `confidence` from models and payloads; `details.web`; tests for loop bounds and answer quality.
-- [ ] **Phase 10: Streamlit Chat UX** - **UI-04**, **UI-05**: chronological append-order, message-first + expandable sources (no confidence — **API-05**).
-- [ ] **Phase 11: README & Credential Smokes** - **DOC-01**, **TST-01**.
+- [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28)*
+- [x] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - *(Completed: 2026-03-28)*
+- [ ] **Phase 12: Supervisor Reliability & Single-Pass Web** - **AGT-06, AGT-07, SRCH-04, WEB-02**: audit accept path; one Tavily per turn; URL ranking; title-first answer; optional one HTTP fetch; terminal AGT-05 after single pass; API shape for unified provenance.
+- [ ] **Phase 13: Streamlit Unified Provenance & Chat UX** - **UI-04, UI-05, UI-06**: chronological append; message first; **one** collapsed provenance (RAG + web + synthesis); no duplicate sources blocks.
+- [ ] **Phase 14: README & Credential Smokes** - **DOC-01, TST-01**.
 
-## Phase Details
+## Phase Details (v1.4)
 
-### Phases 1–8
+### Phase 12: Supervisor Reliability & Single-Pass Web
+**Goal:** Stop spurious AGT-05; **GigaChat-only** acceptance judgment; **one** search iteration with **smarter** use of results.  
+**Depends on:** Phase 9 codebase.  
+**Requirements:** AGT-06, AGT-07, SRCH-04, WEB-02  
+**Success criteria:**
+1. Documented audit: **no** numeric accept gate on supervisor path; parse-fail / API-fail behavior explicit.
+2. Graph invokes **Tavily at most once** per turn after RAG rejection; **no** second Tavily loop.
+3. Worker **ranks** results, can answer from **titles/snippets**, else **fetches one** URL (bounded) before resubmitting to supervisor.
+4. **`details`** (or documented extension) supports **one** UI-facing provenance payload (RAG + web + optional fetch meta).
 
-**Goals and requirements** as historically delivered; Phase 8 graph is **replaced** by Phase 9 architecture (see phase docs under `.planning/phases/`).
+### Phase 13: Streamlit Unified Provenance & Chat UX
+**Goal:** Operator sees **one** clear expandable «происхождение» with RAG + web; main answer unduplicated.  
+**Depends on:** Phase 12 (payload shape stable).  
+**Requirements:** UI-04, UI-05, UI-06  
+**Success criteria:**
+1. Newest turn adjacent to composer; history append order.
+2. No stacked redundant «Источники» + raw `web` JSON for the same facts without hierarchy.
+3. Labels in **Russian** describe what each subsection is for.
 
-### Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance
-**Goal:** **Supervisor** evaluates **full answers** from **Agent 1**; **RAG-only** first; **LangChain Tavily tool** only after supervisor rejection; **≤2** search iterations; then **AGT-05** failure message. **Remove confidence** from API. **Structured `details.web`.**  
-**Depends on:** Phase 8 codebase (refactor in place).  
-**Requirements:** AGT-03, AGT-04, AGT-05, SRCH-03, WEB-01, API-05  
-**Success Criteria** (what must be TRUE):
-  1. A compiled **LangGraph** run per turn includes an explicit **supervisor** decision step on **candidate answer text** vs **user question** (not only retrieval score).
-  2. **Agent 1**’s **first** candidate uses **no web tool**; web tool invocations are **count-limited** to **two** after that, driven by supervisor rejection.
-  3. After **two** unsuccessful search-backed attempts (per AGT-04), the user receives the **AGT-05** fixed Russian message and no fabricated answer.
-  4. **No** `confidence` field appears in `/next_message` JSON, Pydantic models, or documented examples.
-  5. When the tool contributed to the **accepted** answer, **`details.web`** is populated; final **`message`** satisfies **SRCH-03** (answers original question).
-**Plans:** TBD
-
-### Phase 10: Streamlit Chat UX
-**Goal:** Operator chat matches API: **newest near input**, **clean default**, **sources on demand**, **no confidence**.  
-**Depends on:** Phase 9 (API-05 stable).  
-**Requirements:** UI-04, UI-05  
-**Success Criteria** (what must be TRUE):
-  1. Multiple turns: latest user + assistant visible **just above** composer (**append** semantics).
-  2. Assistant **body** visible without expanders; **sources** behind expander.
-  3. No confidence UI elements.
-**Plans:** TBD
-
-### Phase 11: README & Credential Smokes
-**Goal:** Onboarding and optional live key verification.  
-**Depends on:** Phase 10  
+### Phase 14: README & Credential Smokes
+**Goal:** Onboarding + opt-in live checks.  
+**Depends on:** Phase 13  
 **Requirements:** DOC-01, TST-01  
-**Success Criteria:** *(unchanged — full `.env` catalog, pytest marker, offline default)*  
-**Plans:** TBD
+**Success criteria:** Full env catalog; pytest marker; offline default CI.
 
 ## Progress
 
-**Execution Order:** … → 8 → **9** → **10** → **11**
+**Execution order:** … → 9 → **12** → **13** → **14**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1–8 | … | Complete | 2026-03-27 — 2026-03-28 |
-| 9. Supervisor–Agent Graph, No Confidence, Web Provenance | 2/2 | Complete | 2026-03-28 |
-| 10. Streamlit Chat UX | 0/TBD | Planned | — |
-| 11. README & Credential Smokes | 0/TBD | Planned | — |
+| 1–9 | … | Complete | 2026-03-27 — 2026-03-28 |
+| 12. Supervisor reliability & single-pass web | 0/TBD | Planned | — |
+| 13. Streamlit unified provenance & chat UX | 0/TBD | Planned | — |
+| 14. README & credential smokes | 0/TBD | Planned | — |
