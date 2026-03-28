@@ -20,13 +20,20 @@
 **Phases:** 1–8 (through LangGraph + Tavily; f1api removed from `/next_message`).  
 **Outcome:** Compiled graph, retrieval sufficiency gate, GigaChat web path, bounded search/degraded RU copy.
 
-_Note: Linear Phase-8 orchestration is **replaced** in v1.3 by a **supervisor–Agent 1** loop. Originally scoped README + smokes + WEB contract moved to **v1.3 phases 9–11**._
+_Note: Linear Phase-8 orchestration is **replaced** in v1.3 by a **supervisor–Agent 1** loop._
+
+### v1.3 — Supervisor–agent graph, confidence removed (core shipped)
+
+**Completed (core):** 2026-03-28  
+**Phases:** 9 (supervisor loop, ≤2 Tavily, AGT-05, API-05, WEB-01).  
+**Outcome:** LangGraph supervisor + Agent 1, no `confidence` in API, `details.web`.  
+**Deferred / superseded:** Original roadmap phases **10–11** (Streamlit polish, README/smokes) **merged into v1.4** together with orchestration and UI fixes.
 
 ---
 
 ## Active
 
-### v1.3 — Supervisor–agent graph, confidence removed, UX & docs
+### v1.4 — Supervisor tuning, single-pass deep web, unified provenance UI
 
 **Started:** 2026-03-28  
-**Focus:** **LangGraph + LangChain**: **supervisor** accepts/rejects **candidate answers**; **Agent 1** answers **RAG-only** first, then uses **Tavily tool** up to **two** times on supervisor demand; **fixed RU failure** if still inadequate. **`confidence` removed from entire API and UI.** **`details.web`**; Streamlit **chronological** chat, **message first**, **expandable sources**; **README** + **opt-in pytest** smokes.
+**Focus:** Stop **false AGT-05** (audit supervisor + any hidden gates; **only GigaChat** judges acceptance). **One Tavily query per turn** after RAG rejection: rank results, **title-first** answer, **optional single-page fetch** if titles insufficient — **no second search iteration**. **Streamlit:** one **collapsed** provenance block (RAG + web + route metadata), **no duplicated** «Источники», clearer Russian labels. **README + opt-in smokes** (carry DOC-01, TST-01).
