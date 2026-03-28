@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Real-time clock & F1 schedule tools
-status: Roadmap ready — plan Phase 17
-last_updated: "2026-03-28T15:00:00.000Z"
+status: executing
+last_updated: "2026-03-28T12:00:00.000Z"
 last_activity: 2026-03-28
 progress:
   total_phases: 3
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  completed_phases: 1
+  total_plans: 2
+  completed_plans: 2
 ---
 
 # Project State
@@ -20,10 +20,10 @@ See: `.planning/PROJECT.md` — **Current milestone: v1.6** (phases **17–19**)
 
 ## Current Position
 
-Phase: **17** — TimeAPI & FastF1 schedule services (**TIME-01**, **SCHED-01**) — **planned** (первый шаг v1.6; **не** ждём Phase 15)
-Plan: —
-Status: Roadmap: **15** skipped; **16** → **19**; next `/gsd-plan-phase 17`
-Last activity: 2026-03-28 — roadmap reprioritized (время/расписание раньше доков)
+Phase: 18
+Plan: Not started
+Status: Phase 17 complete — next: Phase 18 (worker tools)
+Last activity: 2026-03-28
 
 ## Performance Metrics
 
@@ -48,4 +48,4 @@ _None._
 ## Session Continuity
 
 Last session: 2026-03-28
-Next: `/gsd-plan-phase 17` (then **18**); if finishing v1.5 first, `/gsd-plan-phase 15` or **16**
+Next: `/gsd-discuss-phase 18` or `/gsd-plan-phase 18` (TOOL-01 worker tools)

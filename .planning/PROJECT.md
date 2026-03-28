@@ -39,11 +39,13 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ **Supervisor–Agent 1** LangGraph (RAG-first, ≤2 Tavily rounds, AGT-05 terminal copy), **no `confidence`** in synthesis types or graph outputs, **`details.web`** when search used — validated in Phase 09 (supervisor-agent-graph-no-confidence-web-provenance).
 - ✓ **Supervisor JSON repair + optional decision logging; one Tavily per turn; web URL plan + optional single-page fetch; `details.provenance`** (RAG + web + synthesis, legacy `web` preserved) — validated in Phase 12 (supervisor-reliability-single-pass-web): **AGT-06, AGT-07, SRCH-04, WEB-02**.
 - ✓ **Streamlit chronological chat, answer before provenance UI, single Russian «Происхождение ответа» expander** (RAG + web + synthesis; legacy fallback; separate live panel) — validated in Phase 13 (streamlit-unified-provenance-chat-ux): **UI-04, UI-05, UI-06**.
+- ✓ **TIME-01** — TimeAPI.io single GET unix, `TIMEAPI_TIMEOUT`, `TimeApiError`, fixed RU degraded copy — validated in Phase 17 plan 01 (timeapi-fastf1-schedule-services).
+- ✓ **SCHED-01** — FastF1 `get_event_schedule` next non-testing GP vs TimeAPI «now», year rollover, `schedule_data_quality` + Ergast/pre-2018 docstrings — validated in Phase 17 plan 02 (timeapi-fastf1-schedule-services).
 
 ### Active (v1.6)
 
-- **TIME-01, SCHED-01, TOOL-01** — TimeAPI, FastF1 расписание, tools в графе (**фазы 17–18**).
-- **DOC-01, DOC-02, TST-01** — README / README_DETAILED / smokes (**фаза 19**, после 17–18).
+- **TOOL-01** — LangGraph/LangChain worker tools wrapping TIME-01 + SCHED-01 (**Phase 18**).
+- **DOC-01, DOC-02, TST-01** — README / README_DETAILED / smokes (**фаза 19**, после 18).
 
 ### Out of Scope
 
@@ -103,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — **v1.6** active: phases **17–19**; **v1.5** partial close (14 done, 15 skipped, docs → 19).*
+*Last updated: 2026-03-28 — **v1.6** active: **Phase 17** complete (TIME-01, SCHED-01); next **18** (TOOL-01), then **19** (docs). **v1.5** partial close (14 done, 15 skipped).*

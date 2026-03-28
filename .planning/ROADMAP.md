@@ -27,7 +27,7 @@
 - [x] **Phase 13: Streamlit Unified Provenance & Chat UX** - **UI-04, UI-05, UI-06**: chronological append; message first; **one** collapsed provenance (RAG + web + synthesis); no duplicate sources blocks. (completed 2026-03-28)
 - [x] **Phase 14: F1DB RAG Corpus & Cross-Lingual Retrieval** - **RAG-08, RAG-09**: wave **14-01** (whitelist row chunks + aliases + dual query) **completed 2026-03-28**; wave **14-02** (replan): **русские сезонные сводки** из 8 CSV, чанки overview + per-GP; **ai-forever/ru-en-RoSBERTa** для индекса и запроса; **без alias_resolver** и без фильтра по `canonical_entity_id`. (14-02 completed 2026-03-28)
 - [~] **Phase 15: Supervisor & Two-Step Web Fetch** — **SKIPPED** (2026-03-28): **AGT-08, AGT-09, SRCH-05** не делаем в этом цикле; в продукте сохраняется поведение **Phase 12** (один Tavily, до одного fetch). При необходимости вернуть — отдельный майлстоун/фаза.
-- [ ] **Phase 17: TimeAPI & FastF1 schedule services** - **TIME-01, SCHED-01**: current UTC/unix client with timeout + degraded RU; `EventSchedule` next GP vs «now», session UTC fields, year rollover & ergast caveats documented. **Depends on Phase 14** (RAG baseline), **not** on skipped Phase 15.
+- [x] **Phase 17: TimeAPI & FastF1 schedule services** - **TIME-01, SCHED-01**: current UTC/unix client with timeout + degraded RU; `EventSchedule` next GP vs «now», session UTC fields, year rollover & ergast caveats documented. **Depends on Phase 14** (RAG baseline), **not** on skipped Phase 15. (completed 2026-03-28)
 - [ ] **Phase 18: Worker time & schedule tools** - **TOOL-01**: LangGraph/LangChain tools wired to worker; Russian-facing behavior; tool errors do not break the turn graph.
 - [ ] **Phase 19: README, README_DETAILED & Smokes** (ex-Phase 16) - **DOC-01, DOC-02, TST-01**: onboarding README; **README_DETAILED.md**; opt-in pytest smokes — **после** 17–18, допускается «черновая» дока по договорённости.
 
@@ -80,11 +80,11 @@
 3. The resolver’s structured payload includes **event / grand prix naming**, **country or circuit** as FastF1 provides, and **UTC dates/times for sessions** of the upcoming weekend (or the agreed subset documented in the plan).
 4. **FastF1 ergast / pre-2018** session-time limitations are **documented** wherever schedule results are described (README, tool docstrings, or operator notes) so users know when times are approximate.
 
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] [17-01-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-01-PLAN.md) — TIME-01: TimeAPI httpx client, `TIMEAPI_UNAVAILABLE_MESSAGE_RU`, tests
-- [ ] [17-02-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-02-PLAN.md) — SCHED-01: FastF1 schedule service, exports, tests
+- [x] [17-01-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-01-PLAN.md) — TIME-01: TimeAPI httpx client, `TIMEAPI_UNAVAILABLE_MESSAGE_RU`, tests
+- [x] [17-02-PLAN.md](phases/17-timeapi-fastf1-schedule-services/17-02-PLAN.md) — SCHED-01: FastF1 schedule service, exports, tests
 
 ### Phase 18: Worker time & schedule tools
 **Goal:** The GigaChat **worker** can call **LangGraph/LangChain tools** for **«сейчас»** and **next GP / session schedule** so answers about upcoming races are grounded in **TIME-01 + SCHED-01**; failures are explicit and **do not break** the rest of the turn.  
@@ -121,6 +121,6 @@ Plans:
 | 13. Streamlit unified provenance & chat UX | 1/1 | Complete | 2026-03-28 |
 | 14. F1DB RAG corpus & cross-lingual retrieval | 0/1 planned | Complete    | 2026-03-28 |
 | 15. Supervisor & multi-URL web grounding | — | **Skipped** | — |
-| 17. TimeAPI & FastF1 schedule services | 2/2 | Planned (v1.6) | — |
+| 17. TimeAPI & FastF1 schedule services | 2/2 | Complete    | 2026-03-28 |
 | 18. Worker time & schedule tools | 0/TBD | Planned (v1.6) | — |
 | 19. README, README_DETAILED & smokes | 0/TBD | Planned (v1.6) | — |
