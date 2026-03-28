@@ -20,7 +20,7 @@
 - [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28)*
 - [x] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - *(Completed: 2026-03-28)*
 - [x] **Phase 12: Supervisor Reliability & Single-Pass Web** - **AGT-06, AGT-07, SRCH-04, WEB-02**: audit accept path; one Tavily per turn; URL ranking; title-first answer; optional one HTTP fetch; terminal AGT-05 after single pass; API shape for unified provenance. (completed 2026-03-28)
-- [ ] **Phase 13: Streamlit Unified Provenance & Chat UX** - **UI-04, UI-05, UI-06**: chronological append; message first; **one** collapsed provenance (RAG + web + synthesis); no duplicate sources blocks.
+- [x] **Phase 13: Streamlit Unified Provenance & Chat UX** - **UI-04, UI-05, UI-06**: chronological append; message first; **one** collapsed provenance (RAG + web + synthesis); no duplicate sources blocks. (completed 2026-03-28)
 - [ ] **Phase 14: README & Credential Smokes** - **DOC-01, TST-01**.
 
 ## Phase Details (v1.4)
@@ -60,5 +60,5 @@
 |-------|----------------|--------|-----------|
 | 1–9 | … | Complete | 2026-03-27 — 2026-03-28 |
 | 12. Supervisor reliability & single-pass web | 0/2 | Complete    | 2026-03-28 |
-| 13. Streamlit unified provenance & chat UX | 0/TBD | Planned | — |
+| 13. Streamlit unified provenance & chat UX | 1/1 | Complete    | 2026-03-28 |
 | 14. README & credential smokes | 0/TBD | Planned | — |

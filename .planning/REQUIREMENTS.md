@@ -22,9 +22,9 @@
 
 ### Streamlit (Phase 13)
 
-- [ ] **UI-04**: Chat history **chronological** (oldest top, **newest** above composer); turns **appended**.
-- [ ] **UI-05**: Assistant **message** body always visible; **no** confidence UI (**API-05**).
-- [ ] **UI-06**: **One** collapsed **«Происхождение ответа»** (or agreed label) expander containing **RAG context**, **web** provenance, and **synthesis route / metadata** — **no** separate duplicate «Источники» blocks + separate web JSON expander + vague «Синтез»-only labels for the same content.
+- [x] **UI-04**: Chat history **chronological** (oldest top, **newest** above composer); turns **appended**.
+- [x] **UI-05**: Assistant **message** body always visible; **no** confidence UI (**API-05**).
+- [x] **UI-06**: **One** collapsed **«Происхождение ответа»** (or agreed label) expander containing **RAG context**, **web** provenance, and **synthesis route / metadata** — **no** separate duplicate «Источники» blocks + separate web JSON expander + vague «Синтез»-only labels for the same content.
 
 ### Documentation & quality (Phase 14)
 
