@@ -86,3 +86,35 @@ class LiveDetails(BaseModel):
     as_of: str = Field(..., pattern=r"^\d{4}-\d{2}-\d{2}T.*Z$")
     provider: Literal["f1api.dev"] = "f1api.dev"
     endpoint_key: str | None = None
+
+
+class ProvenanceRag(BaseModel):
+    """RAG slice of `details[\"provenance\"]` (Phase 12 WEB-02 / Phase 13 UI)."""
+
+    normalized_query: str
+    evidence: list[dict] = Field(default_factory=list)
+
+
+class ProvenanceWebFetch(BaseModel):
+    """Optional single-page fetch metadata after Tavily (same URL as planning step)."""
+
+    url: str
+    ok: bool
+    error: str | None = None
+    excerpt_preview: str | None = None
+
+
+class ProvenanceWeb(BaseModel):
+    """Web slice: mirrors graph `web_results` rows; `fetch` only if HTTP fetch ran."""
+
+    queries: list[str] = Field(default_factory=list)
+    results: list[dict] = Field(default_factory=list)
+    fetch: ProvenanceWebFetch | None = None
+
+
+class ProvenanceSnapshot(BaseModel):
+    """Unified provenance for `/next_message` `details[\"provenance\"]` — Streamlit Phase 13 reads this first."""
+
+    rag: ProvenanceRag
+    web: ProvenanceWeb | None = None
+    synthesis: dict = Field(default_factory=dict)

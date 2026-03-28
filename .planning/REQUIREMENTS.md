@@ -9,16 +9,16 @@
 
 ### Supervisor & acceptance (Phase 12)
 
-- [ ] **AGT-06**: **Accept/reject** is determined **only** by the **supervisor LLM** (GigaChat JSON). **Audit** the codebase for any **numeric thresholds** (e.g. legacy 0.55-style gates) on the **accept path**; remove or document if unrelated to the removed product `confidence` field. **Tune** parse-failure policy (currently conservative `False`) so real API errors are distinguishable from **avoidable false rejects**.
-- [ ] **AGT-07**: After the **initial RAG-only** candidate, the worker may use the **web tool at most once per turn** (one Tavily query). **No second** Tavily iteration. **Deepening** happens inside that pass: **rank** returned URLs, assess **titles/snippets**; if insufficient, **fetch exactly one** operator-chosen URL (HTTP, bounded) and incorporate extracted text into **one** revised candidate before the supervisor sees it again. If still rejected, **AGT-05** terminal message (same user-facing copy unless plan agrees a tweak).
+- [x] **AGT-06**: **Accept/reject** is determined **only** by the **supervisor LLM** (GigaChat JSON). **Audit** the codebase for any **numeric thresholds** (e.g. legacy 0.55-style gates) on the **accept path**; remove or document if unrelated to the removed product `confidence` field. **Tune** parse-failure policy (currently conservative `False`) so real API errors are distinguishable from **avoidable false rejects**.
+- [x] **AGT-07**: After the **initial RAG-only** candidate, the worker may use the **web tool at most once per turn** (one Tavily query). **No second** Tavily iteration. **Deepening** happens inside that pass: **rank** returned URLs, assess **titles/snippets**; if insufficient, **fetch exactly one** operator-chosen URL (HTTP, bounded) and incorporate extracted text into **one** revised candidate before the supervisor sees it again. If still rejected, **AGT-05** terminal message (same user-facing copy unless plan agrees a tweak).
 
 ### Search & synthesis (Phase 12)
 
-- [ ] **SRCH-04**: Worker **selects** the best-matching result(s) from the Tavily list for the user question; **prefers** an answer from **titles/snippets** when they suffice; **escalates** to **single-page** content only when needed.
+- [x] **SRCH-04**: Worker **selects** the best-matching result(s) from the Tavily list for the user question; **prefers** an answer from **titles/snippets** when they suffice; **escalates** to **single-page** content only when needed.
 
 ### API / provenance (Phase 12–13)
 
-- [ ] **WEB-02**: Response **`details`** expose a **single structured surface** suitable for UI: **RAG** evidence (snippets/source ids) and **web** (query, URLs, titles, snippets, optional **fetch** metadata) without duplicating the same URLs in multiple unrelated keys. *(Extends **WEB-01**.)*
+- [x] **WEB-02**: Response **`details`** expose a **single structured surface** suitable for UI: **RAG** evidence (snippets/source ids) and **web** (query, URLs, titles, snippets, optional **fetch** metadata) without duplicating the same URLs in multiple unrelated keys. *(Extends **WEB-01**.)*
 
 ### Streamlit (Phase 13)
 

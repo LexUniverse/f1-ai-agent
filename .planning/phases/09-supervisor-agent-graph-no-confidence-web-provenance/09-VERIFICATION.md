@@ -12,7 +12,7 @@ updated: 2026-03-28
 |-----------|----------|
 | Supervisor decides on full candidate vs user question | `gigachat_supervisor_accept_answer` + `_node_supervisor` in `f1_turn_graph.py` |
 | RAG first; ≤2 Tavily after reject | `web_search_rounds` cap + routing in `f1_turn_graph.py` |
-| AGT-05 terminal message | `UNABLE_TO_ANSWER_SUPERVISOR_RU` in `finalize_fail`; tests `test_two_tavily_then_agt05` |
+| AGT-05 terminal message | `UNABLE_TO_ANSWER_SUPERVISOR_RU` in `finalize_fail`; coverage in `test_one_tavily_then_agt05` (Phase 12) |
 | No confidence in API / graph contract | `rg confidence` empty in `gigachat_rag.py`, `f1_turn_graph.py`, `chat.py`; contract tests |
 | `details.web` when web used | `assemble_next_message_details` + `WebSearchDetails`; `test_next_message_contract_phase9.py` |
 

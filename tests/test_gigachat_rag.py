@@ -6,6 +6,7 @@ from src.answer.gigachat_rag import (
     GIGACHAT_SUCCESS_ROUTE,
     GIGACHAT_TEMPLATE_FALLBACK_DISCLOSURE_RU,
     GigachatRUSynthesisResult,
+    gigachat_supervisor_accept_answer,
     gigachat_synthesize_from_web_results,
     gigachat_synthesize_historical,
 )
@@ -56,6 +57,32 @@ def test_gigachat_synthesize_historical_returns_hybrid_structured_answer(monkeyp
     assert "f1db:x" in result.structured_answer.sources_block_ru
     assert result.message == "Краткий ответ."
     assert result.structured_answer.sections[0].heading == "Сводка"
+
+
+def test_gigachat_supervisor_repair_round_accepts_after_bad_json(monkeypatch):
+    calls = {"n": 0}
+
+    class FakeGC:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def chat(self, chat):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content="not json"))]
+                )
+            return _fake_response_content({"accept": True})
+
+    monkeypatch.setattr("src.answer.gigachat_rag.GigaChat", FakeGC)
+    assert gigachat_supervisor_accept_answer(user_question="q?", candidate_answer="ok") is True
+    assert calls["n"] == 2
 
 
 def test_gigachat_synthesize_from_web_results_sources_contain_url(monkeypatch):

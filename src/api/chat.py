@@ -6,10 +6,13 @@ from src.auth.dependencies import require_authorized_session
 from src.auth.errors import AUTH_UNAUTHORIZED, unauthorized_error
 from src.auth.service import AuthService
 from src.graph.f1_turn_graph import F1TurnState, run_f1_turn_sync
+from pydantic import ValidationError
+
 from src.models.api_contracts import (
     EvidenceItem,
     MessageStatusResponse,
     NextMessageResponse,
+    ProvenanceSnapshot,
     StartChatRequest,
     StartChatResponse,
     WebSearchDetails,
@@ -73,6 +76,13 @@ def assemble_next_message_details(
             )
         web = WebSearchDetails(queries=[str(x) for x in tq], results=items)
         details["web"] = web.model_dump()
+
+    raw_prov = out_details.get("provenance")
+    if isinstance(raw_prov, dict):
+        try:
+            details["provenance"] = ProvenanceSnapshot.model_validate(raw_prov).model_dump()
+        except ValidationError:
+            details["provenance"] = raw_prov
     return details
 
 

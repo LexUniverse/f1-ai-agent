@@ -1,6 +1,7 @@
 """
 F1 assistant turn as a compiled LangGraph: retrieve → RAG synthesis → supervisor loop
-with at most two Tavily rounds after a rejected RAG answer (AGT-03–05).
+with at most one Tavily call per turn after a rejected RAG answer; optional page fetch
+before web synthesis (Phase 12 AGT-07 / SRCH-04).
 """
 
 from __future__ import annotations
@@ -17,10 +18,12 @@ from src.answer.gigachat_rag import (
     GIGACHAT_WEB_ROUTE,
     append_fallback_disclosure_ru,
     gigachat_author_tavily_query,
+    gigachat_plan_web_use,
     gigachat_supervisor_accept_answer,
     gigachat_synthesize_from_web_results,
     gigachat_synthesize_historical,
 )
+from src.graph.page_fetch import fetch_url_text_plain
 from src.answer.russian_qna import build_structured_ru_answer, tier_ru_from_max_score
 from src.graph.tavily_tool import TavilyConfigError, run_tavily_search_once
 from src.models.api_contracts import AnswerSection, EvidenceItem, StructuredRUAnswer
@@ -52,6 +55,10 @@ class F1TurnState(TypedDict, total=False):
     terminal_status: str
     out_message: str
     out_details: dict[str, Any]
+    web_plan_best_url: str
+    web_titles_sufficient: bool
+    fetched_page_excerpt: str
+    web_provenance_fetch: dict[str, Any] | None
 
 
 def _default_gigachat_judge(_user_question: str, _evidence: list[EvidenceItem]) -> bool:
@@ -87,6 +94,43 @@ def _node_retrieve(state: F1TurnState) -> dict[str, Any]:
         "top_score": top_score,
         "evidence": evidence,
     }
+
+
+def _compact_evidence_for_provenance(evidence: list[EvidenceItem]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for e in evidence:
+        sn = e.snippet
+        if len(sn) > 400:
+            sn = sn[:400] + "…"
+        out.append(
+            {
+                "source_id": e.source_id,
+                "snippet": sn,
+                "entity_tags": list(e.entity_tags or []),
+            }
+        )
+    return out
+
+
+def _build_provenance_snapshot(state: F1TurnState, synthesis: dict[str, Any]) -> dict[str, Any]:
+    evidence = state.get("evidence") or []
+    rag = {
+        "normalized_query": state.get("normalized_query") or "",
+        "evidence": _compact_evidence_for_provenance(evidence),
+    }
+    prov: dict[str, Any] = {"rag": rag, "synthesis": dict(synthesis)}
+    web_used = int(state.get("web_search_rounds", 0)) > 0
+    if web_used:
+        web_block: dict[str, Any] = {
+            "queries": list(state.get("tavily_queries") or []),
+            # Same row shape as graph `web_results` (Tavily rows); API layer also mirrors this in details.web.
+            "results": list(state.get("web_results") or []),
+        }
+        wf = state.get("web_provenance_fetch")
+        if isinstance(wf, dict) and (wf.get("url") or "").strip():
+            web_block["fetch"] = wf
+        prov["web"] = web_block
+    return prov
 
 
 def _web_sources_fallback(web_results: list[dict[str, Any]]) -> tuple[str, int]:
@@ -135,7 +179,7 @@ def _node_supervisor(state: F1TurnState) -> dict[str, Any]:
 def _route_after_supervisor(state: F1TurnState) -> Literal["finalize_accept", "finalize_fail", "tavily_search"]:
     if state.get("supervisor_accept"):
         return "finalize_accept"
-    if int(state.get("web_search_rounds", 0)) >= 2:
+    if int(state.get("web_search_rounds", 0)) >= 1:
         return "finalize_fail"
     return "tavily_search"
 
@@ -189,13 +233,59 @@ def _node_tavily_search(state: F1TurnState) -> dict[str, Any]:
 def _route_after_tavily(state: F1TurnState):
     if state.get("terminal_status") == "failed" and state.get("error_code") == "WEB_SEARCH_UNAVAILABLE":
         return END
-    return "agent1_web"
+    return "web_plan"
+
+
+def _route_after_web_plan(state: F1TurnState) -> Literal["fetch_page", "agent1_web"]:
+    if state.get("web_titles_sufficient"):
+        return "agent1_web"
+    url = (state.get("web_plan_best_url") or "").strip()
+    if not url:
+        return "agent1_web"
+    return "fetch_page"
+
+
+def _node_web_plan(state: F1TurnState) -> dict[str, Any]:
+    web = state.get("last_web_batch") or []
+    plan = gigachat_plan_web_use(user_question=state["user_question"], web_results=web)
+    return {
+        "web_plan_best_url": (plan.best_url or "").strip(),
+        "web_titles_sufficient": bool(plan.titles_sufficient),
+        "fetched_page_excerpt": "",
+        "web_provenance_fetch": None,
+    }
+
+
+def _node_fetch_page(state: F1TurnState) -> dict[str, Any]:
+    url = (state.get("web_plan_best_url") or "").strip()
+    if not url:
+        return {"fetched_page_excerpt": "", "web_provenance_fetch": None}
+    text = fetch_url_text_plain(url)
+    ok = bool(text.strip())
+    excerpt = (text[:12_000] + "…") if len(text) > 12_000 else text
+    preview = (text[:240] + "…") if len(text) > 240 else text
+    prov = {
+        "url": url,
+        "ok": ok,
+        "error": None if ok else "empty_or_failed",
+        "excerpt_preview": preview if ok else None,
+    }
+    return {
+        "fetched_page_excerpt": excerpt if ok else "",
+        "web_provenance_fetch": prov,
+    }
 
 
 def _node_agent1_web(state: F1TurnState) -> dict[str, Any]:
     web = state.get("last_web_batch") or []
+    raw_excerpt = state.get("fetched_page_excerpt")
+    excerpt = (raw_excerpt or "").strip() or None
     try:
-        result = gigachat_synthesize_from_web_results(user_question=state["user_question"], web_results=web)
+        result = gigachat_synthesize_from_web_results(
+            user_question=state["user_question"],
+            web_results=web,
+            fetched_page_excerpt=excerpt,
+        )
         return {
             "candidate_message": result.message,
             "candidate_structured": result.structured_answer.model_dump(),
@@ -231,6 +321,7 @@ def _node_finalize_accept(state: F1TurnState) -> dict[str, Any]:
     details: dict[str, Any] = {
         "structured_answer": state["candidate_structured"],
         "synthesis": synthesis,
+        "provenance": _build_provenance_snapshot(state, synthesis),
     }
     if web_used:
         details["tavily_queries"] = list(state.get("tavily_queries") or [])
@@ -243,11 +334,13 @@ def _node_finalize_accept(state: F1TurnState) -> dict[str, Any]:
 
 
 def _node_finalize_fail(state: F1TurnState) -> dict[str, Any]:
+    synthesis_fail: dict[str, Any] = {"route": "supervisor_gave_up"}
     details: dict[str, Any] = {
         "structured_answer": state.get("candidate_structured") or {},
-        "synthesis": {"route": "supervisor_gave_up"},
+        "synthesis": synthesis_fail,
         "tavily_queries": list(state.get("tavily_queries") or []),
         "web_results": list(state.get("web_results") or []),
+        "provenance": _build_provenance_snapshot(state, synthesis_fail),
     }
     return {
         "out_message": UNABLE_TO_ANSWER_SUPERVISOR_RU,
@@ -264,6 +357,8 @@ def build_compiled_graph(*, judge_fn: JudgeFn | None = None):
     graph.add_node("agent1_rag", _node_agent1_rag)
     graph.add_node("supervisor", _node_supervisor)
     graph.add_node("tavily_search", _node_tavily_search)
+    graph.add_node("web_plan", _node_web_plan)
+    graph.add_node("fetch_page", _node_fetch_page)
     graph.add_node("agent1_web", _node_agent1_web)
     graph.add_node("finalize_accept", _node_finalize_accept)
     graph.add_node("finalize_fail", _node_finalize_fail)
@@ -282,8 +377,14 @@ def build_compiled_graph(*, judge_fn: JudgeFn | None = None):
     graph.add_conditional_edges(
         "tavily_search",
         _route_after_tavily,
-        {"agent1_web": "agent1_web", END: END},
+        {"web_plan": "web_plan", END: END},
     )
+    graph.add_conditional_edges(
+        "web_plan",
+        _route_after_web_plan,
+        {"fetch_page": "fetch_page", "agent1_web": "agent1_web"},
+    )
+    graph.add_edge("fetch_page", "agent1_web")
     graph.add_edge("agent1_web", "supervisor")
     graph.add_edge("finalize_accept", END)
     graph.add_edge("finalize_fail", END)

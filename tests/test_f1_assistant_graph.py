@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 import src.graph.f1_turn_graph as f1g
@@ -18,6 +20,11 @@ def _base_state() -> F1TurnState:
 def test_empty_evidence_supervisor_accepts_after_web(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(f1g, "retrieve_historical_context", lambda *_a, **_k: [])
     monkeypatch.setattr(f1g, "gigachat_author_tavily_query", lambda **_: "test query")
+    monkeypatch.setattr(
+        f1g,
+        "gigachat_plan_web_use",
+        lambda **_: SimpleNamespace(best_url="https://example.com", titles_sufficient=True),
+    )
     monkeypatch.setattr(
         f1g,
         "run_tavily_search_once",

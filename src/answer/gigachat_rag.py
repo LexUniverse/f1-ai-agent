@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,6 +59,19 @@ _SYSTEM_SUPERVISOR_ACCEPT = """Тебе дан вопрос пользовате
 
 Верни один JSON-объект без markdown: {"accept": true} или {"accept": false}."""
 
+_SYSTEM_WEB_PLAN = """Ты помощник по Формуле 1. Ниже список результатов веб-поиска (URL, заголовок, краткая выдержка).
+Выбери ОДИН лучший URL для ответа на вопрос пользователя. Реши, достаточно ли только заголовка и выдержки (snippet) из списка,
+чтобы дать содержательный ответ, или без полного текста страницы ответить нельзя.
+
+Верни один JSON-объект без markdown. Ключи:
+- best_url (строка) — выбранный URL из списка, точное совпадение с одним из переданных URL
+- titles_sufficient (boolean) — true если title+snippet достаточны, иначе false
+- reason (строка, опционально) — кратко для отладки, можно опустить"""
+
+
+def _env_truthy(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
+
 
 @dataclass
 class GigachatRUSynthesisResult:
@@ -112,6 +126,12 @@ class _SufficiencyJudgePayload(BaseModel):
 
 class _SupervisorAcceptPayload(BaseModel):
     accept: bool
+
+
+class _WebPlanPayload(BaseModel):
+    best_url: str
+    titles_sufficient: bool
+    reason: str | None = None
 
 
 def _strip_json_fence(text: str) -> str:
@@ -196,7 +216,10 @@ def _web_sources_block_ru(web_results: list[dict]) -> tuple[str, int]:
 
 
 def gigachat_synthesize_from_web_results(
-    *, user_question: str, web_results: list[dict]
+    *,
+    user_question: str,
+    web_results: list[dict],
+    fetched_page_excerpt: str | None = None,
 ) -> GigachatRUSynthesisResult:
     lines = []
     for i, row in enumerate(web_results, start=1):
@@ -205,7 +228,17 @@ def gigachat_synthesize_from_web_results(
         body = str(row.get("content", ""))[:1200]
         head = f"{title} — {url}" if title else str(url)
         lines.append(f"[{i}] URL: {head}\nВыдержка: {body}")
-    user = f"Вопрос пользователя: {user_question}\n\nРезультаты поиска:\n" + "\n\n".join(lines)
+    extra = ""
+    if fetched_page_excerpt and fetched_page_excerpt.strip():
+        excerpt = fetched_page_excerpt.strip()
+        if len(excerpt) > 12_000:
+            excerpt = excerpt[:12_000] + "…"
+        extra = f"\n\nТекст со страницы (дополнительно):\n{excerpt}"
+    user = (
+        f"Вопрос пользователя: {user_question}\n\nРезультаты поиска:\n"
+        + "\n\n".join(lines)
+        + extra
+    )
     msg, sections = _chat_completion_json(system=_SYSTEM_WEB, user=user)
     sources_block_ru, citation_count = _web_sources_block_ru(web_results)
     structured = StructuredRUAnswer(
@@ -236,7 +269,21 @@ def gigachat_judge_rag_sufficient(*, user_question: str, evidence: list[Evidence
 
 
 def gigachat_supervisor_accept_answer(*, user_question: str, candidate_answer: str) -> bool:
+    """Supervisor accept/reject for the candidate answer (AGT-06).
+
+    Numeric retrieval scores and tier_ru_from_max_score are not used here — only the
+    LLM supervisor JSON decides accept/reject.
+    """
+    _ = user_question  # omitted from logs by default (privacy)
     user = f"Вопрос пользователя:\n{user_question}\n\nПредлагаемый ответ ассистента:\n{candidate_answer}"
+    log_decisions = _env_truthy("F1_LOG_SUPERVISOR_DECISIONS")
+    log = logging.getLogger(__name__)
+
+    def _log_accept(accept: bool) -> None:
+        if log_decisions:
+            preview = (candidate_answer or "")[:120]
+            log.info("supervisor_decision accept=%s candidate_preview=%r", accept, preview)
+
     try:
         model = _model_name()
         with GigaChat(**_client_kwargs()) as client:
@@ -246,11 +293,84 @@ def gigachat_supervisor_accept_answer(*, user_question: str, candidate_answer: s
             ]
             resp = client.chat(Chat(model=model, messages=messages))
             content = resp.choices[0].message.content
-            data = json.loads(_strip_json_fence(content))
-            parsed = _SupervisorAcceptPayload.model_validate(data)
-            return bool(parsed.accept)
+            try:
+                data = json.loads(_strip_json_fence(content))
+                parsed = _SupervisorAcceptPayload.model_validate(data)
+                accept = bool(parsed.accept)
+                _log_accept(accept)
+                return accept
+            except (json.JSONDecodeError, ValidationError) as e:
+                messages.append(Messages(role=MessagesRole.ASSISTANT, content=content))
+                messages.append(
+                    Messages(
+                        role=MessagesRole.USER,
+                        content=(
+                            f"Неверный формат ответа: {e}. Верни только валидный JSON "
+                            'вида {"accept": true} или {"accept": false}, без других ключей и без текста вокруг.'
+                        ),
+                    )
+                )
+                resp2 = client.chat(Chat(model=model, messages=messages))
+                content2 = resp2.choices[0].message.content
+                try:
+                    data2 = json.loads(_strip_json_fence(content2))
+                    parsed2 = _SupervisorAcceptPayload.model_validate(data2)
+                    accept = bool(parsed2.accept)
+                    _log_accept(accept)
+                    return accept
+                except (json.JSONDecodeError, ValidationError):
+                    return False
     except Exception:
         return False
+
+
+def gigachat_plan_web_use(*, user_question: str, web_results: list[dict]) -> _WebPlanPayload:
+    def _fallback() -> _WebPlanPayload:
+        first = str(web_results[0].get("url", "")) if web_results else ""
+        return _WebPlanPayload(best_url=first, titles_sufficient=True)
+
+    if not web_results:
+        return _WebPlanPayload(best_url="", titles_sufficient=True)
+
+    lines = []
+    for i, row in enumerate(web_results, start=1):
+        url = str(row.get("url", ""))
+        title = str(row.get("title", ""))
+        snippet = str(row.get("content", ""))[:800]
+        lines.append(f"[{i}] url={url}\ntitle={title}\nsnippet={snippet}")
+    user = f"Вопрос пользователя: {user_question}\n\nРезультаты:\n" + "\n\n".join(lines)
+    try:
+        model = _model_name()
+        with GigaChat(**_client_kwargs()) as client:
+            messages: list[Messages] = [
+                Messages(role=MessagesRole.SYSTEM, content=_SYSTEM_WEB_PLAN),
+                Messages(role=MessagesRole.USER, content=user),
+            ]
+            resp = client.chat(Chat(model=model, messages=messages))
+            content = resp.choices[0].message.content
+            try:
+                data = json.loads(_strip_json_fence(content))
+                return _WebPlanPayload.model_validate(data)
+            except (json.JSONDecodeError, ValidationError) as e:
+                messages.append(Messages(role=MessagesRole.ASSISTANT, content=content))
+                messages.append(
+                    Messages(
+                        role=MessagesRole.USER,
+                        content=(
+                            f"Неверный формат ответа: {e}. Верни только JSON с ключами "
+                            "best_url (string), titles_sufficient (boolean), опционально reason (string)."
+                        ),
+                    )
+                )
+                resp2 = client.chat(Chat(model=model, messages=messages))
+                content2 = resp2.choices[0].message.content
+                try:
+                    data2 = json.loads(_strip_json_fence(content2))
+                    return _WebPlanPayload.model_validate(data2)
+                except (json.JSONDecodeError, ValidationError):
+                    return _fallback()
+    except Exception:
+        return _fallback()
 
 
 def gigachat_synthesize_historical(*, evidence: list[EvidenceItem], user_question: str) -> GigachatRUSynthesisResult:

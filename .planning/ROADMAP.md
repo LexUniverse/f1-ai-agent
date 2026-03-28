@@ -19,7 +19,7 @@
 - [x] **Phase 7: Streamlit UI & Local Run** - *(Completed: 2026-03-27)*
 - [x] **Phase 8: LangGraph Supervisor & Tavily Tooling** - *(Completed: 2026-03-28)*
 - [x] **Phase 9: Supervisor–Agent Graph, No Confidence, Web Provenance** - *(Completed: 2026-03-28)*
-- [ ] **Phase 12: Supervisor Reliability & Single-Pass Web** - **AGT-06, AGT-07, SRCH-04, WEB-02**: audit accept path; one Tavily per turn; URL ranking; title-first answer; optional one HTTP fetch; terminal AGT-05 after single pass; API shape for unified provenance.
+- [x] **Phase 12: Supervisor Reliability & Single-Pass Web** - **AGT-06, AGT-07, SRCH-04, WEB-02**: audit accept path; one Tavily per turn; URL ranking; title-first answer; optional one HTTP fetch; terminal AGT-05 after single pass; API shape for unified provenance. (completed 2026-03-28)
 - [ ] **Phase 13: Streamlit Unified Provenance & Chat UX** - **UI-04, UI-05, UI-06**: chronological append; message first; **one** collapsed provenance (RAG + web + synthesis); no duplicate sources blocks.
 - [ ] **Phase 14: README & Credential Smokes** - **DOC-01, TST-01**.
 
@@ -35,7 +35,7 @@
 3. Worker **ranks** results, can answer from **titles/snippets**, else **fetches one** URL (bounded) before resubmitting to supervisor.
 4. **`details`** (or documented extension) supports **one** UI-facing provenance payload (RAG + web + optional fetch meta).
 
-**Plans:** `12-01-PLAN.md` (wave 1 — graph + GigaChat + fetch), `12-02-PLAN.md` (wave 2 — WEB-02 provenance in API).
+**Plans:** 2/2 plans complete
 
 ### Phase 13: Streamlit Unified Provenance & Chat UX
 **Goal:** Operator sees **one** clear expandable «происхождение» with RAG + web; main answer unduplicated.  
@@ -59,6 +59,6 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1–9 | … | Complete | 2026-03-27 — 2026-03-28 |
-| 12. Supervisor reliability & single-pass web | 0/2 | Planned | — |
+| 12. Supervisor reliability & single-pass web | 0/2 | Complete    | 2026-03-28 |
 | 13. Streamlit unified provenance & chat UX | 0/TBD | Planned | — |
 | 14. README & credential smokes | 0/TBD | Planned | — |

@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 import src.graph.f1_turn_graph as f1g
@@ -45,18 +47,23 @@ def test_supervisor_accepts_rag_skips_tavily(monkeypatch: pytest.MonkeyPatch) ->
     assert out.get("synthesis_route") == GIGACHAT_SUCCESS_ROUTE
 
 
-def test_two_tavily_then_agt05(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_one_tavily_then_agt05(monkeypatch: pytest.MonkeyPatch) -> None:
     hits = [{"source_id": "f1db:t", "snippet": "text", "score": 0.5}]
     monkeypatch.setattr(f1g, "retrieve_historical_context", lambda *_a, **_k: hits)
     monkeypatch.setattr(f1g, "gigachat_supervisor_accept_answer", lambda **_: False)
     monkeypatch.setattr(f1g, "gigachat_author_tavily_query", lambda **_: "q")
+    monkeypatch.setattr(
+        f1g,
+        "gigachat_plan_web_use",
+        lambda **_: SimpleNamespace(best_url="https://ex.test", titles_sufficient=True),
+    )
 
     calls = {"n": 0}
 
     def _fake_tavily(_q: str) -> list[dict]:
         calls["n"] += 1
-        if calls["n"] > 2:
-            pytest.fail("At most two Tavily invocations per turn")
+        if calls["n"] > 1:
+            pytest.fail("At most one Tavily invocation per turn")
         return [{"url": "https://ex.test", "content": "snippet"}]
 
     monkeypatch.setattr(f1g, "run_tavily_search_once", _fake_tavily)
@@ -86,7 +93,7 @@ def test_two_tavily_then_agt05(monkeypatch: pytest.MonkeyPatch) -> None:
 
     g = build_compiled_graph()
     out = g.invoke(_base_state(), config={"recursion_limit": 25})
-    assert out.get("web_search_rounds") == 2
+    assert out.get("web_search_rounds") == 1
     assert out.get("out_message") == UNABLE_TO_ANSWER_SUPERVISOR_RU
     assert out.get("synthesis_route") == "supervisor_gave_up"
 
@@ -95,6 +102,11 @@ def test_supervisor_accepts_after_one_web(monkeypatch: pytest.MonkeyPatch) -> No
     hits = [{"source_id": "f1db:t", "snippet": "text", "score": 0.5}]
     monkeypatch.setattr(f1g, "retrieve_historical_context", lambda *_a, **_k: hits)
     monkeypatch.setattr(f1g, "gigachat_author_tavily_query", lambda **_: "q")
+    monkeypatch.setattr(
+        f1g,
+        "gigachat_plan_web_use",
+        lambda **_: SimpleNamespace(best_url="https://ex.test", titles_sufficient=True),
+    )
 
     sup_calls = {"n": 0}
 
