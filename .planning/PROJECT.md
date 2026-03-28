@@ -8,19 +8,21 @@ Asynchronous chat assistant for Formula 1 focused on novice fans who mostly know
 
 The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.
 
-## Current Milestone: v1.4 — Supervisor tuning, single-pass deep web, unified provenance UI
+## Current Milestone: v1.6 — Real-time clock & F1 schedule tools
 
-**Goal:** Fix **over-frequent AGT-05** (supervisor false negatives): ensure **only GigaChat** decides accept/reject — **audit** prompts, JSON failures, and any **legacy numeric thresholds** that are not product `confidence` but still bias behavior. Replace **two Tavily iterations** with **one search per turn** after RAG rejection: **rank** SERP-style results, **decide from titles/snippets** whether an answer is possible; if not, **fetch one chosen URL** and extract text for synthesis — then supervisor accepts or **one** terminal failure path. **Streamlit:** **one** collapsed block for **all** provenance (RAG context + web + synthesis metadata), **no duplicate** “Источники” sections, **clear Russian** labels. Ship **README / `.env` catalog** and **opt-in smokes** (carried from prior roadmap).
+**Goal:** Дать агенту **инструменты** с **текущим временем** через [TimeAPI.io](https://www.timeapi.io/swagger/index.html) (авторитетная метка «сейчас») и **календарём F1** через [FastF1](https://github.com/theOehrly/Fast-F1) (`EventSchedule` / `Event`, поля `Session[1-5]DateUtc`, `EventDate`, `RoundNumber` и т.д.), чтобы на вопросы вроде «какая следующая гонка» ответ строился от **UTC-сейчас** и **расписания сезона**, а не от догадок модели.
 
 **Target features:**
 
-- **Supervisor reliability:** Reproducible logging of reject reasons; conservative JSON-parse fallback reviewed; no hidden **0.xx** gates on accept path.
-- **Web pass:** Single Tavily call → **URL selection** → **title/snippet sufficiency** branch → optional **single-page** read (bounded size/timeout) → single revised candidate → supervisor.
-- **API:** Extend **`details`** (or documented shape) so UI can render **one** provenance payload (RAG evidence summary + web queries/results + optional fetch metadata).
-- **Streamlit:** Chronological chat (**UI-04**); message first; **UI-06** unified expander (replaces duplicated expanders).
-- **Docs:** **DOC-01**, **TST-01**.
+- **TIME:** HTTP-клиент к TimeAPI (например `GET https://www.timeapi.io/api/v1/time/current/utc` или unix); таймауты; явный **degraded** режим при ошибке сети/API.
+- **SCHEDULE:** Загрузка расписания сезона FastF1; выбор **следующего гран-при** (исключить тесты: `RoundNumber > 0`) относительно времени с TimeAPI; при необходимости — ближайшая **сессия** (FP1… Race) в UTC для уточнения «когда старт».
+- **Agent integration:** Зарегистрированные **LangGraph / LangChain tools** для воркера; ответы пользователю по-прежнему **на русском**; согласование с существующим RAG → supervisor → web циклом (инструменты — отдельный канал фактов о «сейчас» и календаре).
 
-**Key context:** Operators see **constant** “Не удалось найти достаточно надёжного ответа…” — likely **supervisor always false** (API/parse/strict prompt) rather than `tier_ru_from_max_score(0.55)` (used only in **template fallback copy**, not supervisor). v1.4 validates that hypothesis in code and simplifies the web loop.
+**Key context:** FastF1: для сезонов **≥2018** — точные времена сессий; при `backend='ergast'` и до-2018 — ограничения из документации FastF1 (оценочные слоты сессий). TimeAPI — внешняя зависимость; опционально задокументировать fallback на системное UTC только если согласовано в плане фазы.
+
+## Previous milestone (roadmap not finished)
+
+**v1.5** — Фазы **15–16** в `.planning/ROADMAP.md`: слепой супервизор, до двух fetch, документация и smokes (**AGT-08**, **AGT-09**, **SRCH-05**, **DOC-01**, **DOC-02**, **TST-01**). Требования остаются в `.planning/REQUIREMENTS.md` до закрытия соответствующих фаз.
 
 ## Requirements
 
@@ -38,9 +40,10 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ **Supervisor JSON repair + optional decision logging; one Tavily per turn; web URL plan + optional single-page fetch; `details.provenance`** (RAG + web + synthesis, legacy `web` preserved) — validated in Phase 12 (supervisor-reliability-single-pass-web): **AGT-06, AGT-07, SRCH-04, WEB-02**.
 - ✓ **Streamlit chronological chat, answer before provenance UI, single Russian «Происхождение ответа» expander** (RAG + web + synthesis; legacy fallback; separate live panel) — validated in Phase 13 (streamlit-unified-provenance-chat-ux): **UI-04, UI-05, UI-06**.
 
-### Active (v1.4)
+### Active (v1.6 + residual v1.5)
 
-- **DOC-01, TST-01** — see `.planning/REQUIREMENTS.md` (v1.4 section).
+- **v1.6:** **TIME-01, SCHED-01, TOOL-01** — TimeAPI «сейчас», FastF1 следующий ГП/сессии, инструменты в графе — see `.planning/REQUIREMENTS.md`.
+- **v1.5 (until phases 15–16 close):** **AGT-08, AGT-09, SRCH-05, DOC-01, DOC-02, TST-01** — same file, v1.5 section.
 
 ### Out of Scope
 
@@ -50,7 +53,7 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 
 ## Context
 
-Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streamlit. Historical data: f1db in ChromaDB. Web: **Tavily** (typically one shot per turn after supervisor rejects RAG) plus **optional HTTP fetch** of a single page for deeper context; **GigaChat** drives supervisor and worker prompts. Acceptance is **LLM-judged only** (no product confidence field).
+Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streamlit. Historical data: f1db in ChromaDB (whitelist tables). Web: **Tavily** (one query per turn after RAG path fails supervisor) plus **up to 2** sequential **bounded** HTTP fetches of URLs **chosen by GigaChat** from the result list when titles/snippets are insufficient (**AGT-09**). **GigaChat** drives worker steps (title sufficiency, URL pick). **Supervisor** judges accept/reject **without** being told whether the candidate came from RAG, web body, or titles only (**AGT-08**). No product confidence field.
 
 ## Constraints
 
@@ -72,6 +75,13 @@ Backend is FastAPI with async endpoints and Pydantic models. Frontend is Streaml
 | v1.4: Single web pass + fetch | Richer answers without double Tavily | Rank URLs → titles → optional one fetch → synthesize once. |
 | v1.4: Supervisor false-negative audit | Operators hit AGT-05 too often | Trace rejects; fix parse fallback / prompts; confirm no numeric accept gate. |
 | v1.4: Unified Streamlit provenance | Duplicate source blocks confuse operators | One expander: RAG + web + synthesis labels. |
+| v1.5: RAG whitelist + chunk/query strategy | Много CSV шумят; RU vs EN данные | Явный whitelist; EN чанки + нормализация запроса / алиасы / гибрид (план). |
+| v1.5: Two-fetch web pass | Один нерелевантный URL → AGT-05 | GigaChat: 2 кандидата по заголовкам; макс. **2** fetch подряд. |
+| v1.5: Blind supervisor | Источник влияет на ложные reject | Судить только Q↔answer; title/snippet-кандидат = такой же приём. |
+| v1.5: Supervisor output shape | Вопрос на вопрос | Только прямой ответ или abstention. |
+| v1.5: README_DETAILED | Onboarding README too shallow for graph/RAG | **DOC-02** full file/module map. |
+| v1.6: Authoritative «now» | Модель не знает текущую дату для «следующей гонки» | **TIME-01** — TimeAPI.io как источник UTC/unix. |
+| v1.6: Calendar facts | Расписание из FastF1 EventSchedule vs произвольный веб | **SCHED-01** + **TOOL-01** в воркере. |
 
 ## Evolution
 
@@ -91,4 +101,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — Phase **13** complete (Streamlit unified provenance & chat UX); next: Phase **14** README & credential smokes.*
+*Last updated: 2026-03-28 — **v1.6** started (TimeAPI + FastF1 schedule tools); **v1.5** phases **15–16** still on roadmap until closed.*

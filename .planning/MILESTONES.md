@@ -33,7 +33,17 @@ _Note: Linear Phase-8 orchestration is **replaced** in v1.3 by a **supervisor–
 
 ## Active
 
+### v1.6 — Real-time clock & F1 schedule tools
+
+**Started:** 2026-03-28  
+**Focus:** **TimeAPI.io** for authoritative **current UTC**; **FastF1** `EventSchedule` for **next grand prix** and session times relative to that timestamp; **LangGraph tools** on the worker path. See `.planning/REQUIREMENTS.md` (**TIME-01, SCHED-01, TOOL-01**).
+
+### v1.5 — F1DB RAG finish, supervisor/web, docs (phases 15–16)
+
+**Started:** 2026-03-28  
+**Status:** Phases **14** complete on roadmap; **15–16** pending (**AGT-08, AGT-09, SRCH-05, DOC-01, DOC-02, TST-01**).
+
 ### v1.4 — Supervisor tuning, single-pass deep web, unified provenance UI
 
 **Started:** 2026-03-28  
-**Focus:** Stop **false AGT-05** (audit supervisor + any hidden gates; **only GigaChat** judges acceptance). **One Tavily query per turn** after RAG rejection: rank results, **title-first** answer, **optional single-page fetch** if titles insufficient — **no second search iteration**. **Streamlit:** one **collapsed** provenance block (RAG + web + route metadata), **no duplicated** «Источники», clearer Russian labels. **README + opt-in smokes** (carry DOC-01, TST-01).
+**Focus:** Stop **false AGT-05** (audit supervisor + any hidden gates; **only GigaChat** judges acceptance). **One Tavily query per turn** after RAG rejection: rank results, **title-first** answer, **optional single-page fetch** if titles insufficient — **no second search iteration**. **Streamlit:** one **collapsed** provenance block (RAG + web + route metadata), **no duplicated** «Источники**, clearer Russian labels. **README + opt-in smokes** (carry DOC-01, TST-01).

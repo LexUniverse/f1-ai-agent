@@ -1,32 +1,29 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-last_updated: "2026-03-28T02:15:03.290Z"
+milestone: v1.6
+milestone_name: Real-time clock & F1 schedule tools
+status: Defining requirements
+last_updated: "2026-03-28T12:00:00.000Z"
 last_activity: 2026-03-28
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 3
-  completed_plans: 3
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` — **Current milestone: v1.4**
-
-**Core value:** The assistant knows Formula 1 deeply and delivers accurate answers with minimal hallucinations.  
-**Current focus:** Phase 13 — streamlit-unified-provenance-chat-ux
+See: `.planning/PROJECT.md` — **Current milestone: v1.6** (TimeAPI.io + FastF1 schedule tools). **v1.5** phases 15–16 remain on `.planning/ROADMAP.md` until shipped.
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Executing Phase 13
-Last activity: 2026-03-28
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-28 — Milestone v1.6 started
 
 ## Performance Metrics
 
@@ -37,7 +34,8 @@ _Not measured._
 ### Decisions
 
 - **v1.3:** Supervisor judges answers; Agent 1 RAG-first; Tavily capped; `confidence` removed (**API-05**).
-- **v1.4:** **One** Tavily call per turn after RAG reject; deepen via **URL choice + titles + optional fetch**; supervisor must not spuriously reject (audit prompts / parse-fail policy); Streamlit **single** provenance expander including **RAG context**.
+- **v1.4:** **One** Tavily call per turn after RAG reject; deepen via **URL choice + titles + optional fetch**; Streamlit **single** provenance expander including **RAG context**.
+- **v1.6:** «Сейчас» для логики «следующая гонка» — **TimeAPI.io**; календарь — **FastF1** `EventSchedule`, сравнение с UTC-меткой с TimeAPI.
 
 ### Pending Todos
 
@@ -45,9 +43,9 @@ _None._
 
 ### Blockers/Concerns
 
-- **Operator report:** ответы часто сводятся к AGT-05 — проверить супервизор (JSON/сеть/строгость), а не только «0.55» (в коде 0.55 сейчас в **fallback-тексте**, не в accept/reject).
+- **v1.5** UAT items (RAG/supervisor) may still apply until Phase 15–16 complete.
 
 ## Session Continuity
 
-Last session: 2026-03-28T02:09:49.296Z
-Next: `/gsd-discuss-phase 12` or `/gsd-plan-phase 12`
+Last session: 2026-03-28
+Next: `/gsd-plan-phase` for first **v1.6** phase after roadmap merge
