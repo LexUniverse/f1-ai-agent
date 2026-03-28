@@ -7,3 +7,6 @@ venv/
 .chroma/
 # Локальные веса эмбеддингов (~1.5G); см. README / .env.example
 embedding_model/
+.cursor/
+.planning/
+.vscode/
