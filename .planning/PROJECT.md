@@ -36,10 +36,11 @@ The assistant knows Formula 1 deeply and delivers accurate answers with minimal 
 - ✓ **LangGraph** turn with **RAG** + **Tavily (LangChain)** and **GigaChat**; **f1api.dev** removed from answer path — validated in Phase 08 (langgraph-supervisor-tavily-tooling); *linear orchestration superseded by v1.3 supervisor–agent loop.*
 - ✓ **Supervisor–Agent 1** LangGraph (RAG-first, ≤2 Tavily rounds, AGT-05 terminal copy), **no `confidence`** in synthesis types or graph outputs, **`details.web`** when search used — validated in Phase 09 (supervisor-agent-graph-no-confidence-web-provenance).
 - ✓ **Supervisor JSON repair + optional decision logging; one Tavily per turn; web URL plan + optional single-page fetch; `details.provenance`** (RAG + web + synthesis, legacy `web` preserved) — validated in Phase 12 (supervisor-reliability-single-pass-web): **AGT-06, AGT-07, SRCH-04, WEB-02**.
+- ✓ **Streamlit chronological chat, answer before provenance UI, single Russian «Происхождение ответа» expander** (RAG + web + synthesis; legacy fallback; separate live panel) — validated in Phase 13 (streamlit-unified-provenance-chat-ux): **UI-04, UI-05, UI-06**.
 
 ### Active (v1.4)
 
-- **UI-06, DOC-01, TST-01** — see `.planning/REQUIREMENTS.md` (v1.4 section).
+- **DOC-01, TST-01** — see `.planning/REQUIREMENTS.md` (v1.4 section).
 
 ### Out of Scope
 
@@ -90,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 — Phase **12** complete (supervisor reliability, single-pass web, API provenance); next: Phase **13** Streamlit unified provenance UX.*
+*Last updated: 2026-03-28 — Phase **13** complete (Streamlit unified provenance & chat UX); next: Phase **14** README & credential smokes.*
