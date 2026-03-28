@@ -154,11 +154,10 @@ def main() -> None:
 
                     assistant_text = nxt.get("message", "") or ""
                     details = nxt.get("details") if isinstance(nxt.get("details"), dict) else {}
-                    st.session_state.messages.insert(
-                        0,
+                    st.session_state.messages.append({"role": "user", "content": q.strip()})
+                    st.session_state.messages.append(
                         {"role": "assistant", "content": assistant_text, "details": details},
                     )
-                    st.session_state.messages.insert(0, {"role": "user", "content": q.strip()})
             except httpx.RequestError as exc:
                 st.error(f"Ошибка сети: {exc}")
 
