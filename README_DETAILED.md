@@ -1,205 +1,21 @@
 # F1 Assistant — подробная документация
 
-Документ описывает структуру репозитория, способ построения корпуса и индекса, алгоритм поиска, архитектуру агента (LangGraph + GigaChat + Tavily), контракты API и вспомогательные модули. Для быстрого старта и списка переменных окружения см. [README.md](README.md).
+Архитектура, RAG, метрики поиска, LangGraph, промпты GigaChat, HTTP API. Установка и переменные окружения — в [README.md](README.md).
 
 ---
 
-## 1. Назначение продукта
+## 1. Назначение и поток обработки вопроса
 
-Асинхронный русскоязычный ассистент по Формуле 1:
+1. **RAG** — векторный поиск по чанкам в **Chroma** (тексты собраны из CSV f1db, русский язык).
+2. **GigaChat** — ответ строго по найденным фрагментам (JSON: `message` + `sections`).
+3. **Супервизор (GigaChat)** — принять или отклонить черновик; числовой score ретривала не участвует.
+4. При отклонении и доступном **Tavily** — не более **одного** поискового запроса за ход, опционально **одна** догрузка HTML, веб-синтез, снова супервизор.
 
-1. **Локальный RAG** — векторный поиск по чанкам, собранным из открытых CSV датасета f1db (сезонные сводки на русском).
-2. **Синтез ответа** — модель **GigaChat** получает найденные фрагменты и формирует структурированный ответ с ограничением «только по контексту».
-3. **Супервизор** — второй вызов GigaChat оценивает, устраивает ли ответ; при отказе — не более **одного** запроса к **Tavily** за ход, опциональная **догрузка одной HTML-страницы**, повторный синтез по веб-сниппетам и снова супервизор.
+**Оркестрация — LangGraph** (`src/graph/f1_turn_graph.py`): `StateGraph(F1TurnState)`, узлы и условные переходы, `compile()`, `invoke(..., config={"recursion_limit": 25})`.
 
-Внешний REST **f1api.dev** в основном пайплайне чата **не вызывается** (в коде есть утилиты для «живых» сценариев и контракты под live-данные — см. раздел 10).
+**LangChain в проекте:** только **langchain-community** — инструмент `TavilySearchResults` и обёртка API в `src/graph/tavily_tool.py` (плюс кастомный таймаут HTTP). Пакет **langchain-core** подтягивается зависимостью **LangGraph**; в `src/` прямых импортов `langchain_core` нет. Цепочки LCEL (`prompt | model`) **не используются**; GigaChat вызывается через SDK **gigachat**.
 
----
-
-## 2. Дерево проекта и роль файлов
-
-### 2.1. Точки входа
-
-| Путь | Назначение |
-|------|------------|
-| `api.py` | Запуск **uvicorn** с `reload` только на каталоге `src/`, исключения для `.venv`, `.chroma`, `.git`. |
-
-**Uvicorn вручную** (из корня репозитория), если не используете `api.py`:
-
-```bash
-uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload \
-  --reload-dir src \
-  --reload-exclude .venv --reload-exclude .chroma --reload-exclude .git
-```
-| `src/main.py` | FastAPI-приложение: `load_dotenv`, роутер чата, глобальный `SessionStore` и `AuthService`, обработчики ошибок. |
-| `streamlit_app.py` | UI-оператор: HTTP-клиент к API, опрос статуса, отображение ответа и блока происхождения (provenance). |
-
-### 2.2. Граф агента и веб-поиск
-
-| Путь | Назначение |
-|------|------------|
-| `src/graph/f1_turn_graph.py` | **LangGraph**: состояние хода, узлы retrieve → RAG-синтез → супервизор → (при необходимости) Tavily → план веба → fetch страницы → веб-синтез → снова супервизор; финализация. |
-| `src/graph/tavily_tool.py` | Один вызов Tavily через `langchain_community` + кастомный HTTP wrapper с таймаутом `TAVILY_TIMEOUT`. |
-| `src/graph/page_fetch.py` | GET выбранного URL через **httpx**, грубое извлечение текста из HTML (`html.parser`, вырезание script/style). |
-
-### 2.3. LLM и русскоязычная разметка ответа
-
-| Путь | Назначение |
-|------|------------|
-| `src/answer/gigachat_rag.py` | Все вызовы **GigaChat**: RAG-синтез, веб-синтез, формулировка запроса для Tavily, супервизор accept/reject, план «какую страницу догрузить»; системные промпты и парсинг JSON. |
-| `src/answer/russian_qna.py` | Пороги уверенности по score ретривала, сборка `sources_block_ru`, шаблонный structured answer при падении GigaChat; вспомогательные строки для live-сводок. |
-
-### 2.4. Retrieval и индекс
-
-| Путь | Назначение |
-|------|------------|
-| `src/retrieval/season_summary_corpus.py` | **Единственный источник чанков** для текущего прод-индекса: чтение CSV, генерация русских текстов «обзор сезона» и «гонка + полная классификация». |
-| `src/retrieval/index_builder.py` | Подключение к Chroma, `upsert` батчами по 250, опциональная запись markdown-сводок в `scripts/summaries/`. |
-| `src/retrieval/embeddings.py` | `SentenceTransformerEmbeddingFunction` для Chroma; модель из `F1_EMBEDDING_MODEL`, иначе локальный `embedding_model/`, иначе Hub `ai-forever/ru-en-RoSBERTa`. |
-| `src/retrieval/retriever.py` | Открытие коллекции `f1_historical`, `query` с метаданными, преобразование distance → score, фильтр по году. |
-| `src/retrieval/query_normalize.py` | Нормализация строки для API/логов; **извлечение года** для `$and` с метаданными Chroma; **без** словаря сущностей — `canonical_entity_ids` / `entity_tags` всегда пустые. |
-| `src/retrieval/evidence.py` | Преобразование сырых hit’ов в `EvidenceItem` (короткий snippet для UI, полный текст для LLM). |
-| `src/retrieval/rag_limits.py` | Функция `max_chars_per_rag_chunk()` и переменная `F1_RAG_MAX_CHARS_PER_CHUNK` — **задокументированный** лимит; в текущей версии основной пайплайн GigaChat использует свои константы усечения (см. §5.3). |
-| `src/retrieval/document_schema.py` | **Альтернативная** схема: нарратив из **отдельных строк** таблиц (англоязычные шаблоны) + `canonical_entity_id`. Используется для тестов/расширений; **текущий** `build_historical_index` чанки из неё **не строит**. |
-
-### 2.5. API, сессии, авторизация
-
-| Путь | Назначение |
-|------|------------|
-| `src/api/chat.py` | `POST /start_chat`, `GET /message_status`, `POST /next_message`; нормализация запроса, `asyncio.to_thread(run_f1_turn_sync)`, сборка `details` (evidence, web, provenance). |
-| `src/models/api_contracts.py` | Pydantic-модели ответов, `EvidenceItem`, `StructuredRUAnswer`, provenance, web results. |
-| `src/sessions/store.py` | In-memory сессии с TTL (по умолчанию 30 мин). |
-| `src/auth/service.py` | Проверка кода по allowlist (HMAC compare_digest), интеграция с лимитером. |
-| `src/auth/allowlist.py`, `limiter.py`, `dependencies.py`, `errors.py` | Список кодов из `AUTH_ALLOWLIST_CODES`, защита от перебора, `Depends` для `X-Session-Id`. |
-| `src/models/auth.py` | `AuthDecision` и коды решений. |
-
-### 2.6. UI и сообщения
-
-| Путь | Назначение |
-|------|------------|
-| `src/ui/f1_chat_http.py` | HTTP-вызовы API с таймаутом. |
-| `src/ui/provenance_display.py` | Markdown для блоков RAG / Web / Fetch / Synthesis в Streamlit. |
-| `src/search/messages_ru.py` | Тексты ошибок (в т.ч. `WEB_SEARCH_UNAVAILABLE`). |
-
-### 2.7. Live / календарь (вспомогательно)
-
-| Путь | Назначение |
-|------|------------|
-| `src/live/gate.py` | Эвристика `requires_live_data` по подстрокам RU/EN. |
-| `src/live/messages_ru.py` | Строки для live-сценариев. |
-
-### 2.8. Скрипты и данные
-
-| Путь | Назначение |
-|------|------------|
-| `scripts/build_f1_season_summaries.py` | CLI: сборка индекса и опциональный `--dump-jsonl` чанков без Chroma. |
-| `scripts/summaries/season_YYYY.md` | Артефакты после индексации (удобно для diff/review). |
-| `f1db-csv/` | Ожидается у пользователя: набор CSV (см. README). |
-| `.chroma/` | Персистентное хранилище Chroma (в `.gitignore`). |
-| `certs/*.pem` | Опционально: цепочка НУЦ для verify SSL к GigaChat. |
-| `embedding_model/` | Опционально: локальная копия RoSBERTa. |
-| `tests/` | Pytest: граф, RAG, API, нормализация запроса, gigachat-моки и т.д. |
-
----
-
-## 3. Корпус и разбиение на чанки
-
-### 3.1. Источник данных
-
-Используется **ограниченный набор** CSV из f1db (см. комментарии в `index_builder.py` и README):
-
-- `f1db-seasons-driver-standings.csv`, `f1db-seasons-entrants-drivers.csv`, `f1db-seasons-drivers.csv`
-- `f1db-drivers.csv`, `f1db-constructors.csv`, `f1db-grands-prix.csv`, `f1db-countries.csv`
-- `f1db-races.csv`, `f1db-races-race-results.csv`
-
-### 3.2. Временное окно
-
-- По умолчанию **последние 50 сезонов** относительно **максимального года** в `f1db-races.csv` (`years_span` в `build_historical_index` / `build_season_summary_documents`).
-
-### 3.3. Виды чанков (логика `season_summary_corpus.py`)
-
-1. **`season_overview` (на сезон)**  
-   - Одна строка-заголовок: год, число гонщиков, при наличии — пометка чемпиона из `championshipWon`.  
-   - **Полная таблица** чемпионата: для каждого участника сезона — строка вида «место / команда — пилот — очки» (источники: зачёт + заявленные пилоты; при отсутствии строки в зачёте — «вне итоговой классификации»).  
-   - Хвостовая строка с **поисковыми подсказками** для семантического поиска (сезон, таблица и т.д.).
-
-2. **`grand_prix_race` (на каждую гонку в окне)**  
-   - Строка «Итог гонки (победитель)» при наличии P1.  
-   - Метаданные этапа: сезон, раунд, название Гран-при, официальное имя, страна.  
-   - Блок **идентификаторов для поиска** (grand prix id, год, круг, ключевые слова).  
-   - **Полная классификация** всех строк результатов (место, пилот, команда, очки, время/сход).
-
-### 3.4. Идентификаторы чанков
-
-- **`source_id`**: человекочитаемый ключ, например `f1db:season-summary:2023:overview` или `f1db:season-summary:2023:gp:5:monaco-grand-prix`.  
-- **`chunk_id`**: **SHA-1** от стабильной строки `dataset=f1db|source_id=...` (детерминированный id для upsert в Chroma).
-
-### 3.5. Метаданные в Chroma
-
-У каждого документа минимум: `dataset`, `table`, `source_id`, `year`, `chunk_kind`; для гонок дополнительно `grand_prix_id` (нижний регистр slug).
-
----
-
-## 4. Эмбеддинги и индексирование
-
-- Бэкенд: **Chroma** `PersistentClient(path=".chroma")`.  
-- Коллекция: **`f1_historical`**.  
-- Функция эмбеддингов: **`chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction`** с моделью из `get_embedding_model_name()` (см. §2.4).  
-- При **создании** новой коллекции передаётся `embedding_function`; при **чтении** существующей в `retriever` используется `embedding_function=None`, чтобы Chroma применял уже сохранённую конфигурацию векторов и не смешивал модели.
-
-**Важно:** после смены модели эмбеддингов индекс нужно **пересобрать** (старые векторы несовместимы с новыми).
-
----
-
-## 5. Поиск по чанкам (retrieval)
-
-### 5.1. Тип поиска
-
-Используется **исключительно векторный поиск** (семантический):
-
-- Запрос пользователя передаётся в `collection.query(query_texts=[...], n_results=top_k, where=...)`.  
-- Отдельного BM25 / полнотекстового индекса в проекте **нет**.  
-- Словарь алиасов сущностей **не используется**; `canonical_entity_ids` в API остаются пустыми.
-
-### 5.2. k ближайших и «расстояние»
-
-- Параметр **`n_results`** в Chroma соответствует **top_k** (в графе для истории: **10**).  
-- Chroma возвращает список **`distances`** для каждого результата. В коде ретривера:
-
-```text
-score = max(0.0, 1.0 - distance)
-```
-
-То есть используется линейное преобразование «чем меньше distance, тем выше score», с отсечением отрицательных значений после преобразования. Конкретная метрика distance задаётся реализацией Chroma для выбранной функции эмбеддингов (для типичных настроек sentence-transformers в экосистеме Chroma это **согласованное с косинусной близостью** пространство; точное имя метрики см. в документации вашей версии Chroma). Порог **`min_score = 0.25`** отсекает слабые совпадения.
-
-Результаты дополнительно **сортируются по убыванию `score`**.
-
-### 5.3. Фильтрация по году
-
-`extract_year_int_from_query` ищет в **исходном** тексте вопроса год в диапазоне **1950–2035** (regex). Если год найден, в `where` добавляется условие `year == "<год>"` (совместно с `dataset == "f1db"` через `$and`).
-
-Если с фильтром по году **нет ни одного** hit’а, выполняется **второй** запрос **без** фильтра по году (fallback), чтобы не терять релевантные чанки при ошибочно угаданном годе.
-
-### 5.4. Что уходит в LLM и в API
-
-- В hit хранится полный текст документа из Chroma, обрезанный до **`MAX_LLM_CHARS_PER_HIT = 16_000`** символов (`retriever.py`) в поле `document_full`.  
-- В `evidence.py` в UI/API уходит **`snippet`** до **280** символов; в GigaChat для RAG — **`context_for_llm`**, с усечением в `gigachat_rag._evidence_block_for_llm` до **14_000** символов на фрагмент.
-
-Модуль `rag_limits.max_chars_per_rag_chunk()` (дефолт 8000, env `F1_RAG_MAX_CHARS_PER_CHUNK`) **предусмотрен** для единообразного бюджета, но **не подключён** к `gigachat_synthesize_historical` в текущей версии — фактические лимиты заданы константами в `retriever.py` и `gigachat_rag.py`.
-
----
-
-## 6. Архитектура агента (LangGraph)
-
-### 6.1. Состояние `F1TurnState` (основные поля)
-
-- Вход: `user_question`, опционально `normalized_query`, пустые `canonical_entity_ids` / `entity_tags`.  
-- После retrieve: `retrieval_hits`, `top_score`, `evidence`.  
-- Кандидат ответа: `candidate_message`, `candidate_structured`, `synthesis_route`.  
-- Супервизор: `supervisor_accept`.  
-- Веб: `web_search_rounds` (макс. 1 полноценный заход в Tavily за ход), `tavily_queries`, `web_results`, `last_web_batch`, `tavily_blocked`, `web_plan_best_url`, `web_titles_sufficient`, `fetched_page_excerpt`, `web_provenance_fetch`.
-
-### 6.2. Узлы и рёбра (упрощённо)
+**Не подключено к этому пайплайну:** модули `src/live/` (эвристика `requires_live_data`), вспомогательные функции `live_*` / `build_live_*` в `russian_qna.py`, поля контрактов с отсылкой к внешнему API — в коде есть как заготовки, **граф одного хода чата их не вызывает**.
 
 ```mermaid
 flowchart TD
@@ -220,84 +36,185 @@ flowchart TD
   finalize_fail --> END
 ```
 
-- **`retrieve`**: `retrieve_historical_context(user_question, ..., top_k=10, min_score=0.25, year_hint=extract_year_int_from_query(user_question))`, затем `format_evidence`.  
-- **`agent1_rag`**: `gigachat_synthesize_historical`; при ошибке GigaChat — шаблонный ответ из `russian_qna` + дисклеймер.  
-- **`supervisor`**: `gigachat_supervisor_accept_answer` (JSON `accept`). **Числовой score ретривала здесь не используется** — только текст вопроса и кандидат-ответ.  
-- **`tavily_search`**: GigaChat формулирует строку запроса (`gigachat_author_tavily_query`), затем `run_tavily_search_once`.  
-- **`finalize_rag_no_tavily`**: Tavily недоступен, но супервизор отклонил RAG — повторный синтез **только по чанкам** с системной подсказкой об отсутствии веба.  
-- **`web_plan`**: GigaChat выбирает `best_url` и флаг `titles_sufficient`.  
-- **`fetch_page`**: httpx + plain text, до **12_000** символов в state для синтеза.  
-- **`agent1_web`**: `gigachat_synthesize_from_web_results` (сниппеты до ~1200 символов на результат + опционально полный текст страницы).  
-- После веб-синтеза граф **снова** ведёт в **`supervisor`** (второй шанс принять ответ).  
-- **`finalize_fail`**: сообщение `UNABLE_TO_ANSWER_SUPERVISOR_RU` (супервизор отклонил и веб уже был).
+Узлы: `retrieve` → `agent1_rag` → `supervisor`; при отказе — `tavily_search` → при ошибке ключа/сети `finalize_rag_no_tavily` (повторный RAG), иначе `web_plan` → при необходимости `fetch_page` → `agent1_web` → снова `supervisor`. Итог: `finalize_accept` или `finalize_fail`.
 
-`recursion_limit` при `invoke`: **25**.
+Значения `details.synthesis.route` (типично): `gigachat_rag`, `gigachat_web`, `template_fallback`, `gigachat_rag_no_web`, `supervisor_gave_up`.
 
-### 6.3. Маршруты синтеза (`synthesis.route` в ответе API)
-
-Типичные значения: `gigachat_rag`, `gigachat_web`, `template_fallback`, `gigachat_rag_no_web`, `supervisor_gave_up`.
-
-### 6.4. Устаревшие/вспомогательные вызовы в `gigachat_rag.py`
-
-`gigachat_judge_rag_sufficient` — отдельный LLM-судья «достаточен ли контекст»; **текущий скомпилированный граф** после RAG идёт сразу в **супервизора по ответу**, а не в этот judge. Функция остаётся для тестов и возможных альтернативных сборок графа.
+`gigachat_judge_rag_sufficient` в граф **не входит** (остаётся для тестов/альтернативных сборок).
 
 ---
 
-## 7. GigaChat: роли и форматы
+## 2. Карта кода
 
-Все вызовы через `GigaChat(**_client_kwargs())` из SDK; учётные данные — стандартные env SDK (в первую очередь **`GIGACHAT_CREDENTIALS`**).
+### 2.1. Входы и API
 
-| Функция | Назначение |
-|---------|------------|
-| `_chat_completion_json` | Ответ строго JSON: `message` + `sections[]`; при невалидном JSON — один repair-раунд в том же чате. |
-| `_chat_completion_plain_line` | Одна строка (запрос для Tavily). |
-| `gigachat_supervisor_accept_answer` | JSON `{"accept": bool}`. |
-| `gigachat_plan_web_use` | JSON `best_url`, `titles_sufficient`. |
+| Путь | Назначение |
+|------|------------|
+| `api.py` | Uvicorn с `reload` по `src/`, исключая `.venv`, `.chroma`, `.git`. |
+| `src/main.py` | FastAPI, `load_dotenv`, роутер чата, сессии, авторизация. |
+| `streamlit_app.py` | UI: HTTP к API, provenance. |
 
-Системные промпты зашиты в константах в начале `gigachat_rag.py` (антисгаллюцинации для RAG, ограничение по веб-сниппетам и т.д.).
+**Uvicorn вручную:**
+
+```bash
+uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload \
+  --reload-dir src \
+  --reload-exclude .venv --reload-exclude .chroma --reload-exclude .git
+```
+
+| Путь | Назначение |
+|------|------------|
+| `src/api/chat.py` | `POST /start_chat`, `GET /message_status`, `POST /next_message`; `run_f1_turn_sync`. |
+| `src/models/api_contracts.py` | Pydantic: ответы, `EvidenceItem`, provenance. |
+| `src/sessions/store.py` | Сессии в памяти, TTL. |
+| `src/auth/*`, `src/models/auth.py` | Код доступа, лимиты, `X-Session-Id`. |
+
+### 2.2. Граф и веб
+
+| Путь | Назначение |
+|------|------------|
+| `src/graph/f1_turn_graph.py` | LangGraph, состояние хода, узлы и рёбра. |
+| `src/graph/tavily_tool.py` | Tavily через LangChain Community, таймаут `TAVILY_TIMEOUT`. |
+| `src/graph/page_fetch.py` | Загрузка страницы (httpx), текст из HTML. |
+
+### 2.3. LLM
+
+| Путь | Назначение |
+|------|------------|
+| `src/answer/gigachat_rag.py` | GigaChat: RAG, веб, Tavily-query, супервизор, план URL; системные промпты — раздел 7. |
+| `src/answer/russian_qna.py` | Уверенность по `rank_score`, источники, шаблон при падении GigaChat; функции `live_*` — не используются графом. |
+
+### 2.4. Корпус и запись в Chroma (без поиска)
+
+| Путь | Назначение |
+|------|------------|
+| `src/retrieval/season_summary_corpus.py` | Чтение CSV f1db, генерация текста чанков (обзор сезона, гонка + классификация). |
+| `src/retrieval/index_builder.py` | `PersistentClient(".chroma")`, коллекция `f1_historical`, `upsert` батчами 250. |
+
+### 2.5. Эмбеддинги (модель → вектор)
+
+| Путь | Назначение |
+|------|------------|
+| `src/retrieval/embeddings.py` | `SentenceTransformerEmbeddingFunction`; модель для индексации задаётся здесь (см. раздел 4). |
+
+### 2.6. Поиск по индексу и подготовка evidence
+
+| Путь | Назначение |
+|------|------------|
+| `src/retrieval/retriever.py` | `collection.query`, метаданные `where`, преобразование `distance` → `score`, порог `min_score`. |
+| `src/retrieval/query_normalize.py` | Нормализация строки; **извлечение года** (regex 1950–2035) для фильтра Chroma; `canonical_entity_ids` / сущности не заполняются. |
+| `src/retrieval/evidence.py` | Hit → `EvidenceItem` (snippet для UI, полный текст для LLM). |
+| `src/retrieval/rag_limits.py` | `max_chars_per_rag_chunk` / env — не связан с основным усечением в GigaChat (лимиты в `retriever.py` и `gigachat_rag.py`). |
+| `src/retrieval/document_schema.py` | Альтернативная схема нарратива; **текущий** `build_historical_index` из неё чанки не строит. |
+
+### 2.7. UI и сообщения
+
+| Путь | Назначение |
+|------|------------|
+| `src/ui/f1_chat_http.py`, `src/ui/provenance_display.py` | Клиент API, markdown provenance в Streamlit. |
+| `src/search/messages_ru.py` | Тексты ошибок (`WEB_SEARCH_UNAVAILABLE` и др.). |
 
 ---
 
-## 8. Tavily
+## 3. Корпус
 
-- Инструмент: `TavilySearchResults` с `search_depth="basic"`.  
-- Ограничения: `TAVILY_MAX_RESULTS` (по умолчанию 5), HTTP timeout через кастомный `_TavilySearchAPIWrapperWithTimeout`.  
-- Без ключа: в графе выставляется `tavily_blocked`, далее ветка `finalize_rag_no_tavily` или при определённых условиях согласованность с `WEB_SEARCH_UNAVAILABLE` (см. тесты и `run_f1_turn_sync`).
+Данные: ограниченный набор CSV f1db (список в комментарии в `index_builder.py`). Окно по умолчанию: **50 сезонов** от максимального года в `f1db-races.csv`.
 
----
+Два вида чанков из `season_summary_corpus.py`: **`season_overview`** (итог сезона и таблица) и **`grand_prix_race`** (итог гонки, метаданные этапа, полная классификация).
 
-## 9. HTTP API (контракт поведения)
-
-- **`POST /start_chat`**: тело `StartChatRequest` (код доступа, опционально первый вопрос). Возвращает `session_id`.  
-- **`GET /message_status`**: заголовок **`X-Session-Id`**; ответ `status` + `details` при ошибке.  
-- **`POST /next_message`**: тот же заголовок; в фоне потока выполняется `run_f1_turn_sync`. Успех: `status: "ready"`, `message`, `details` с `normalized_query`, `evidence`, `structured_answer`, `synthesis`, опционально `web`, `provenance`.
-
-**Provenance** (`details.provenance`): объект с полями `rag` (нормализованный запрос + компактные evidence), при использовании веба — `web` (queries, results, опционально `fetch`), плюс `synthesis` (копия метаданных маршрута).
-
-`EvidenceItem.context_for_llm` в JSON **исключается** (`exclude=True` в Pydantic), чтобы не раздувать ответ.
+Идентификаторы: **`source_id`** (человекочитаемый ключ), **`chunk_id`** — SHA-1 от `dataset=f1db|source_id=...`. В Chroma в метаданных: `dataset`, `table`, `source_id`, `year`, `chunk_kind`, для гонок — `grand_prix_id`.
 
 ---
 
-## 10. Прочие модули
+## 4. Эмбеддинги и индекс
 
-- **`src/search/messages_ru.py`**, **`src/live/`** — вспомогательные тексты и эвристики; основной граф F1 хода их может не вызывать.  
-- **Тесты** (`tests/`): контракты API, нормализация года, моки GigaChat, сценарии графа (супервизор, Tavily, fetch), RAG-индексация и др.
+- Хранилище: **Chroma** `PersistentClient(path=".chroma")`, коллекция **`f1_historical`**.
+- Векторизация: **`chromadb.utils.embedding_functions.SentenceTransformerEmbeddingFunction`** (библиотека **sentence-transformers**).
 
----
+**Модель:** в проекте используется **`ai-forever/ru-en-RoSBERTa`**. В `embeddings.py` логика выбора имени модели: при непустом **`F1_EMBEDDING_MODEL`** или при наличии валидного каталога **`embedding_model/`** в корне репозитория может подставляться другой путь/идентификатор; **иначе** берётся указанный идентификатор Hugging Face **`ai-forever/ru-en-RoSBERTa`**.
 
-## 11. Зависимости (верхний уровень)
-
-- **FastAPI**, **uvicorn**, **httpx**, **pydantic**, **python-dotenv**  
-- **chromadb**, **sentence-transformers**  
-- **gigachat** (официальный SDK)  
-- **langgraph**, **langchain-core**, **langchain-community** (Tavily)  
-- **streamlit** (UI)  
-- **pytest** (тесты)
-
-Точные диапазоны версий — в `requirements.txt`.
+При **создании** коллекции передаётся `embedding_function`; при **открытии** существующей в `retriever` — `embedding_function=None`, чтобы Chroma использовал сохранённую конфигурацию эмбеддингов. Смена модели без пересборки индекса недопустима: векторы станут несовместимы.
 
 ---
 
-## 12. Связь с кратким README
+## 5. Поиск (RAG): алгоритм и метрики
 
-Установка, команды индексации, запуск `api.py` и Streamlit, таблица переменных окружения — в [README.md](README.md). Этот файл дополняет его **архитектурой и ссылками на код** без дублирования пошаговых команд.
+Только **семантический** векторный поиск: `collection.query(query_texts=[...], n_results=top_k, where=...)`. BM25 и полнотекстовый индекс **нет**.
+
+**Параметры в графе:** `top_k=10`, `min_score=0.25` (`retrieve_historical_context` в `f1_turn_graph.py`).
+
+**Метрика в Chroma** для `SentenceTransformerEmbeddingFunction`: пространство по умолчанию **`cosine`**. В коде Chroma косинусная **distance** (как в hnswlib):
+
+\[
+\text{distance} = 1 - \frac{x \cdot y}{\|x\|\,\|y\| + \varepsilon}
+\]
+
+**В ретривере** (`retriever.py`): `score = max(0.0, 1.0 - distance)` — численно это **косинусное сходство** запроса и документа (с защитой от отрицательных значений из-за погрешностей). Документы с `score < min_score` отбрасываются; оставшиеся сортируются по **убыванию** `score`.
+
+**Фильтр по году:** если `extract_year_int_from_query` извлёк год, в `where` добавляется `$and` с `year == "<год>"` и `dataset == "f1db"`. Если при фильтре результатов нет — повторный запрос **без** фильтра по году.
+
+**Объёмы текста:** полный текст чанка в hit до **16_000** символов (`MAX_LLM_CHARS_PER_HIT`); snippet в API **280**; в блок контекста для RAG до **14_000** символов на фрагмент (`_evidence_block_for_llm` в `gigachat_rag.py`). На результат веб-поиска в синтезе до **1200** символов выдержки; догруженная страница до **12_000** символов в state.
+
+`canonical_entity_ids` в API остаются пустыми.
+
+---
+
+## 6. GigaChat: роли, форматы ответа, системные промпты
+
+Вызовы через `GigaChat(**_client_kwargs())`; модель по умолчанию из **`GIGACHAT_MODEL`** или `GigaChat`. Для JSON-ответов: `_chat_completion_json` (при ошибке парсинга — один repair-раунд в том же чате). Одна строка: `_chat_completion_plain_line` (запрос для Tavily).
+
+Константы в **`gigachat_rag.py`** (системный текст → назначение):
+
+| Константа | Назначение |
+|-----------|------------|
+| `_SYSTEM_HISTORICAL` | RAG: только контекст `[1]..[n]`, антигаллюцинации, формат JSON `message` + `sections`, требования к прямому ответу и честному отказу. |
+| `_SYSTEM_WEB` | Ответ только по выдержкам веб-поиска с URL, тот же JSON. |
+| `_SYSTEM_TAVILY_QUERY` | Сформулировать одну поисковую строку для Tavily, без JSON. |
+| `_SYSTEM_SUPERVISOR_ACCEPT` | Оценить, отвечает ли черновик на вопрос; JSON `{"accept": true/false}`. |
+| `_SYSTEM_WEB_PLAN` | Выбрать один `best_url`, флаг `titles_sufficient`; JSON с опциональным `reason`. |
+| `_SYSTEM_JUDGE` | Оценка достаточности контекста для вопроса; JSON `sufficient` — **используется только** в `gigachat_judge_rag_sufficient`, не в текущем графе. |
+
+---
+
+## 7. Tavily
+
+`TavilySearchResults` с `search_depth="basic"`, `TAVILY_MAX_RESULTS` (по умолчанию 5), HTTP timeout через `_TavilySearchAPIWrapperWithTimeout` и `TAVILY_TIMEOUT`. Без `TAVILY_API_KEY` — `tavily_blocked`, ветка `finalize_rag_no_tavily` или сообщение о недоступности веб-поиска (см. `run_f1_turn_sync` и тесты).
+
+---
+
+## 8. HTTP API
+
+- **`POST /start_chat`** — код доступа, опционально первый вопрос; `session_id`.
+- **`GET /message_status`**, **`POST /next_message`** — заголовок **`X-Session-Id`**.
+- Успех: `status: "ready"`, `message`, `details` (`normalized_query`, `evidence`, `structured_answer`, `synthesis`, при вебе — `web`, `provenance`).
+
+`EvidenceItem.context_for_llm` в JSON ответа не сериализуется (`exclude=True`).
+
+---
+
+## 9. Зависимости
+
+Версии — в [`requirements.txt`](requirements.txt).
+
+| Пакет | Роль |
+|-------|------|
+| **fastapi**, **uvicorn** | HTTP API |
+| **pydantic** | Схемы ответов |
+| **httpx** | Запросы (в т.ч. fetch страницы) |
+| **python-dotenv** | `.env` |
+| **chromadb** | Векторный индекс |
+| **sentence-transformers** | Эмбеддинги (RoSBERTa через Chroma) |
+| **gigachat** | SDK GigaChat |
+| **langgraph** | Граф состояний |
+| **langchain-core** | Зависимость LangGraph |
+| **langchain-community** | Tavily |
+| **streamlit** | UI |
+| **pytest** | Тесты |
+
+Отдельный пакет **`langchain`** (полный) для LCEL-агентов не подключается.
+
+---
+
+## 10. Краткий README
+
+Команды установки, индексация, запуск — в [README.md](README.md).

@@ -1,6 +1,6 @@
 # F1 Assistant
 
-Асинхронный русскоязычный чат про Формулу 1: **RAG** по локальному индексу (Chroma + CSV f1db), при неудовлетворительном ответе супервизора — **один** запрос **Tavily** за ход и опциональная догрузка страницы; синтез и проверка ответов — **GigaChat**. Внешний REST Formula 1 (f1api.dev) в основном пайплайне не используется.
+Асинхронный русскоязычный чат про Формулу 1: **RAG** по локальному индексу (Chroma + CSV f1db), при неудовлетворительном ответе супервизора — **один** запрос **Tavily** за ход и опциональная догрузка страницы; синтез и проверка ответов — **GigaChat**.
 
 **Полная документация** (структура файлов, чанкинг, векторный поиск, LangGraph, промпты, контракты API): [README_DETAILED.md](README_DETAILED.md).
 
@@ -42,7 +42,7 @@ pip install -r requirements.txt
 
 ### 2. Индекс RAG
 
-Подготовьте каталог **`f1db-csv/`** с нужными CSV (список файлов — в [README_DETAILED.md](README_DETAILED.md) §3 или в комментарии в `src/retrieval/index_builder.py`).
+Подготовьте каталог **`f1db-csv/`** с нужными CSV (список файлов — в комментарии в `src/retrieval/index_builder.py`).
 
 ```bash
 python3 scripts/build_f1_season_summaries.py
@@ -70,7 +70,7 @@ streamlit run streamlit_app.py
 
 **Совместимость Python:** на 3.14 возможны предупреждения от зависимостей LangChain; для разработки удобнее 3.12/3.13.
 
-**Uvicorn вручную:** ограничьте `--reload-dir` каталогом `src` и исключите `.venv` и `.chroma`, иначе reloader будет лишний раз перезапускать сервер — пример в [README_DETAILED.md](README_DETAILED.md) §2.1 / исторически в комментариях к `api.py`.
+**Uvicorn вручную:** ограничьте `--reload-dir` каталогом `src` и исключите `.venv` и `.chroma`, иначе reloader будет лишний раз перезапускать сервер — пример в [README_DETAILED.md](README_DETAILED.md), раздел 2.1.
 
 ### 4. Тесты
 
